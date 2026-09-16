@@ -1,0 +1,24 @@
+[project]
+name = "stereorange"
+version = "0.1.0"
+description = "基于双目视觉视差原理的任意表面测距系统"
+requires-python = ">=3.10,<3.12"
+dependencies = [
+    "numpy>=1.26,<3",
+    "opencv-python>=4.10,<5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["stereorange"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "def show_results\\(",
+]
