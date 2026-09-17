@@ -10,6 +10,7 @@ from typing import Sequence
 import cv2
 import numpy as np
 
+from stereorange import PROJECT_CREDIT
 from stereorange.calibration import (
     StereoCalibration,
     StereoRectifier,
@@ -36,7 +37,10 @@ from stereorange.presentation import colorize_values, save_results, show_results
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="基于双目视差的基础测距演示。")
+    parser = argparse.ArgumentParser(
+        description="基于双目视差的基础测距演示。",
+        epilog=PROJECT_CREDIT,
+    )
     parser.add_argument(
         "--demo",
         action="store_true",

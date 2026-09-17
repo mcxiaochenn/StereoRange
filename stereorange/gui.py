@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from stereorange import PROJECT_CREDIT
 from stereorange.analysis import PointKind, ProcessedFrame, TrackingMode
 from stereorange.calibration import StereoRectifier, load_calibration, split_side_by_side
 from stereorange.config import DEFAULT_BASELINE_M, DEFAULT_FOCAL_PX
@@ -293,7 +294,7 @@ class StereoRangeWindow(QMainWindow):
         brand.setStyleSheet(
             "font-size:20px; font-weight:900; letter-spacing:2px; color:#f5f7fa;"
         )
-        subtitle = QLabel("智能双目测距控制台")
+        subtitle = QLabel("平湖技师学院 · 智能双目测距控制台")
         subtitle.setStyleSheet("color:#758398; margin-left:8px;")
         header.addWidget(brand)
         header.addWidget(subtitle)
@@ -413,6 +414,11 @@ class StereoRangeWindow(QMainWindow):
         controls.addWidget(reset)
         content.addWidget(sidebar)
         page.addLayout(content, 1)
+
+        credit = QLabel(PROJECT_CREDIT)
+        credit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        credit.setStyleSheet("color:#607086; font-size:10px; letter-spacing:1px;")
+        page.addWidget(credit)
 
         self.setStatusBar(QStatusBar())
         self.statusBar().showMessage("正在加载标定参数、识别模型和摄像头…")
@@ -613,7 +619,8 @@ class StereoRangeWindow(QMainWindow):
             "2. 主画面会显示类别、置信度和物体距离。\n"
             "3. 可切换全场景或仅识别物体的最近/最远点。\n"
             "4. 点击下方缩略图可切换主视图，F11 可全屏。\n\n"
-            "当前标定 RMS 偏高时，距离只能作为演示参考。",
+            "当前标定 RMS 偏高时，距离只能作为演示参考。\n\n"
+            f"作者署名：{PROJECT_CREDIT}",
         )
 
     def keyPressEvent(self, event: QKeyEvent) -> None:

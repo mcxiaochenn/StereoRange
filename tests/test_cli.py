@@ -25,6 +25,16 @@ def test_default_headless_run_saves_complete_result(tmp_path: Path) -> None:
     assert metadata["valid_disparity_pixels"] > 0
 
 
+def test_help_contains_project_credit(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    assert exc_info.value.code == 0
+    output = capsys.readouterr().out
+    assert "平湖技师学院" in output
+    assert "mcxiaochenn" in output
+
+
 def test_local_images_without_camera_parameters_only_save_disparity(
     tmp_path: Path,
     capsys,

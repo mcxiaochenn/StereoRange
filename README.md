@@ -2,6 +2,15 @@
 
 基于双目视觉视差原理的任意表面测距系统，计划使用 Python 实现。
 
+> 平湖技师学院 · 陆逸尘 · 辰渊尘 · GitHub [@mcxiaochenn](https://github.com/mcxiaochenn) · ChenDusk
+
+## 项目信息
+
+- 所属单位：平湖技师学院
+- 项目作者：陆逸尘、辰渊尘
+- GitHub：[@mcxiaochenn](https://github.com/mcxiaochenn)
+- 创作署名：ChenDusk
+
 ## 项目简介
 
 StereoRange 旨在通过双目相机获取同一场景的左右视图，利用对应点之间的视差估算深度，从而实现对任意表面的非接触式距离测量。
