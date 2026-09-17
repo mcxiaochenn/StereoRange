@@ -27,6 +27,7 @@ from stereorange.config import (
     DEFAULT_CALIBRATION_PATH,
     DEFAULT_FOCAL_PX,
     DEFAULT_LEFT_CAMERA_INDEX,
+    DEFAULT_MODEL_PATH,
     DEFAULT_RIGHT_CAMERA_INDEX,
     DEFAULT_STEREO_CAMERA_INDEX,
 )
@@ -73,6 +74,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="标定参数文件；未指定时自动尝试 private-data/calibration.npz",
     )
+    parser.add_argument(
+        "--model",
+        type=Path,
+        default=DEFAULT_MODEL_PATH,
+        help="YOLOX-Nano ONNX 模型路径",
+    )
+    parser.add_argument(
+        "--classic-ui",
+        action="store_true",
+        help="实时模式使用原 OpenCV 多窗口界面",
+    )
     parser.add_argument("--output-dir", type=Path, help="可选的结果输出目录")
     parser.add_argument("--no-gui", action="store_true", help="不打开交互窗口")
     return parser
@@ -82,6 +94,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         _validate_args(args)
+        if _is_live_mode(args) and not args.classic_ui and not args.dual_camera:
+            calibration_path = args.calibration or DEFAULT_CALIBRATION_PATH
+            return run_competition_gui(
+                args.stereo_camera,
+                calibration_path,
+                args.model,
+            )
         calibration, calibration_path = _select_calibration(args)
         rectifier = StereoRectifier(calibration) if calibration is not None else None
         if _is_live_mode(args):
@@ -167,6 +186,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, ValueError) as exc:
         print(f"错误：{exc}", file=sys.stderr)
         return 2
+
+
+def run_competition_gui(
+    camera_index: int,
+    calibration_path: Path,
+    model_path: Path,
+) -> int:
+    """延迟导入 Qt，使演示、测试和经典界面不强制初始化 Qt。"""
+    from stereorange.gui import run_gui
+
+    return run_gui(camera_index, calibration_path, model_path)
 
 
 def _validate_args(args: argparse.Namespace) -> None:

@@ -1,3 +1,4 @@
 *.pdf binary
 *.prt binary
 *.stl binary
+*.bat text eol=crlf

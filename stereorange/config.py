@@ -14,3 +14,4 @@ DEFAULT_RIGHT_CAMERA_INDEX = 1
 DEFAULT_FRAME_WIDTH = 640
 DEFAULT_FRAME_HEIGHT = 480
 DEFAULT_CALIBRATION_PATH = Path("private-data/calibration.npz")
+DEFAULT_MODEL_PATH = Path("private-data/models/yolox_nano.onnx")

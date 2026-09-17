@@ -130,16 +130,21 @@ def test_different_image_sizes_return_error(tmp_path: Path, capsys) -> None:
     assert "左右图像尺寸必须一致" in capsys.readouterr().err
 
 
-def test_default_mode_dispatches_to_side_by_side_stereo_camera(
+def test_default_mode_dispatches_to_competition_ui(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     received: dict[str, object] = {}
 
-    def fake_run_live_stereo_camera(**kwargs) -> None:
-        received.update(kwargs)
+    def fake_run_competition_gui(camera_index, calibration_path, model_path) -> int:
+        received.update(
+            camera_index=camera_index,
+            calibration_path=calibration_path,
+            model_path=model_path,
+        )
+        return 0
 
-    monkeypatch.setattr("main.run_live_stereo_camera", fake_run_live_stereo_camera)
+    monkeypatch.setattr("main.run_competition_gui", fake_run_competition_gui)
     monkeypatch.setattr(
         "main.DEFAULT_CALIBRATION_PATH",
         tmp_path / "missing-calibration.npz",
@@ -147,8 +152,19 @@ def test_default_mode_dispatches_to_side_by_side_stereo_camera(
 
     assert main([]) == 0
     assert received["camera_index"] == 0
-    assert received["focal_px"] == 700.0
-    assert received["baseline_m"] == 0.12
+    assert received["calibration_path"] == tmp_path / "missing-calibration.npz"
+
+
+def test_classic_ui_keeps_side_by_side_camera_dispatch(monkeypatch) -> None:
+    received: dict[str, object] = {}
+
+    def fake_run_live_stereo_camera(**kwargs) -> None:
+        received.update(kwargs)
+
+    monkeypatch.setattr("main.run_live_stereo_camera", fake_run_live_stereo_camera)
+
+    assert main(["--classic-ui"]) == 0
+    assert received["camera_index"] == 0
 
 
 def test_dual_camera_mode_dispatches_two_device_indices(monkeypatch) -> None:
