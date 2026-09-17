@@ -71,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--calibration",
         type=Path,
-        help="标定参数文件；未指定时自动尝试 calibration/calibration.npz",
+        help="标定参数文件；未指定时自动尝试 private-data/calibration.npz",
     )
     parser.add_argument("--output-dir", type=Path, help="可选的结果输出目录")
     parser.add_argument("--no-gui", action="store_true", help="不打开交互窗口")

@@ -35,14 +35,14 @@ def build_parser() -> argparse.ArgumentParser:
     capture.add_argument(
         "--camera", type=int, default=DEFAULT_STEREO_CAMERA_INDEX
     )
-    capture.add_argument("--output-dir", type=Path, default=Path("calibration/images"))
+    capture.add_argument("--output-dir", type=Path, default=Path("private-data/images"))
     capture.add_argument("--target", type=int, default=25, help="建议采集数量")
 
     solve = subparsers.add_parser("solve", help="根据已采集图像求解标定参数")
     _add_board_arguments(solve, millimetres=True)
-    solve.add_argument("--images", type=Path, default=Path("calibration/images"))
+    solve.add_argument("--images", type=Path, default=Path("private-data/images"))
     solve.add_argument(
-        "--output", type=Path, default=Path("calibration/calibration.npz")
+        "--output", type=Path, default=Path("private-data/calibration.npz")
     )
     return parser
 

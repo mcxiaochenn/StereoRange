@@ -59,6 +59,14 @@ python -m pytest
 
 ## 双目标定
 
+实机标定图片和设备参数保存在私有子模块 `private-data/`。仓库所有者首次克隆后需要执行：
+
+```powershell
+git submodule update --init --recursive
+```
+
+未获私有仓库权限的用户可以克隆公开主仓库，但不能下载该子模块内容。
+
 仓库已经包含默认标定板：
 
 - `assets/stereorange_checkerboard_9x6_25mm_a4.pdf`：推荐直接打印；
@@ -90,7 +98,7 @@ python calibrate.py pattern --output-dir assets
 python calibrate.py capture --camera 0 --target 25
 ```
 
-窗口中左右两侧都显示角点连线并出现 `READY` 后，按空格保存一组；按 `Q` 或 `Esc` 结束。图像默认保存到 `calibration/images`。
+窗口中左右两侧都显示角点连线并出现 `READY` 后，按空格保存一组；按 `Q` 或 `Esc` 结束。图像默认保存到私有子模块的 `private-data/images`。
 
 建议采集 `25～30` 组，过程中保持相机本体和左右镜头相对位置不变，并让标定板：
 
@@ -111,14 +119,14 @@ python calibrate.py solve --square-mm 25
 程序只使用左右图都成功识别全部 `9 × 6` 内角点的图像对，至少需要 10 组。结果默认写入：
 
 ```text
-calibration/calibration.npz
+private-data/calibration.npz
 ```
 
-终端会显示左右相机和双目标定的 RMS、校正后焦距与基线。RMS 越低通常越好；若结果明显偏大，应删除模糊、反光或姿态重复的图像后重新采集。标定文件与采集图片属于具体设备数据，已被 `.gitignore` 忽略。
+终端会显示左右相机和双目标定的 RMS、校正后焦距与基线。RMS 越低通常越好；若结果明显偏大，应删除模糊、反光或姿态重复的图像后重新采集。标定文件与采集图片属于具体设备数据，应在 `private-data` 子模块中单独提交和推送。
 
 ### 4. 使用标定结果
 
-默认启动命令会自动加载 `calibration/calibration.npz`：
+默认启动命令会自动加载 `private-data/calibration.npz`：
 
 ```powershell
 python main.py
@@ -183,7 +191,7 @@ python main.py --left left.png --right right.png
 如果本地左右图是标定时分辨率一致的原始图，可显式指定标定文件，让程序先完成校正：
 
 ```powershell
-python main.py --left left.png --right right.png --calibration calibration\calibration.npz
+python main.py --left left.png --right right.png --calibration private-data\calibration.npz
 ```
 
 同时提供焦距和基线后，可以计算深度：
