@@ -10,6 +10,11 @@ from typing import Sequence
 import cv2
 import numpy as np
 
+from stereorange.calibration import (
+    StereoCalibration,
+    StereoRectifier,
+    load_calibration,
+)
 from stereorange.core import (
     FloatImage,
     Image,
@@ -19,6 +24,7 @@ from stereorange.core import (
 )
 from stereorange.config import (
     DEFAULT_BASELINE_M,
+    DEFAULT_CALIBRATION_PATH,
     DEFAULT_FOCAL_PX,
     DEFAULT_LEFT_CAMERA_INDEX,
     DEFAULT_RIGHT_CAMERA_INDEX,
@@ -62,6 +68,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--focal-px", type=float, help="以像素为单位的焦距")
     parser.add_argument("--baseline-m", type=float, help="以米为单位的双目基线")
+    parser.add_argument(
+        "--calibration",
+        type=Path,
+        help="标定参数文件；未指定时自动尝试 calibration/calibration.npz",
+    )
     parser.add_argument("--output-dir", type=Path, help="可选的结果输出目录")
     parser.add_argument("--no-gui", action="store_true", help="不打开交互窗口")
     return parser
@@ -71,13 +82,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         _validate_args(args)
+        calibration, calibration_path = _select_calibration(args)
+        rectifier = StereoRectifier(calibration) if calibration is not None else None
         if _is_live_mode(args):
             focal_px = (
-                args.focal_px if args.focal_px is not None else DEFAULT_FOCAL_PX
+                calibration.focal_px
+                if calibration is not None
+                else args.focal_px
+                if args.focal_px is not None
+                else DEFAULT_FOCAL_PX
             )
             baseline_m = (
-                args.baseline_m if args.baseline_m is not None else DEFAULT_BASELINE_M
+                calibration.baseline_m
+                if calibration is not None
+                else args.baseline_m
+                if args.baseline_m is not None
+                else DEFAULT_BASELINE_M
             )
+            if calibration_path is not None:
+                print(f"已加载标定文件：{calibration_path.resolve()}")
             if args.dual_camera:
                 run_live_cameras(
                     left_index=args.left_camera,
@@ -85,6 +108,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     focal_px=focal_px,
                     baseline_m=baseline_m,
                     output_dir=args.output_dir,
+                    rectifier=rectifier,
+                    calibration_path=calibration_path,
                 )
             else:
                 run_live_stereo_camera(
@@ -92,10 +117,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                     focal_px=focal_px,
                     baseline_m=baseline_m,
                     output_dir=args.output_dir,
+                    rectifier=rectifier,
+                    calibration_path=calibration_path,
                 )
             return 0
 
         left, right, input_mode, focal_px, baseline_m = _load_inputs(args)
+        if rectifier is not None:
+            left, right = rectifier.rectify(left, right)
+            focal_px = calibration.focal_px
+            baseline_m = calibration.baseline_m
         disparity = compute_disparity(left, right)
         depth = _make_depth(disparity, focal_px, baseline_m)
         disparity_preview = colorize_values(disparity, cv2.COLORMAP_TURBO)
@@ -109,6 +140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             depth,
             focal_px,
             baseline_m,
+            calibration_path,
         )
 
         _print_summary(metadata)
@@ -140,6 +172,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _validate_args(args: argparse.Namespace) -> None:
     if args.demo and (args.left is not None or args.right is not None):
         raise ValueError("--demo 不能与本地图像参数同时使用。")
+    if args.demo and args.calibration is not None:
+        raise ValueError("--demo 不能与 --calibration 同时使用。")
     if args.dual_camera and not _is_live_mode(args):
         raise ValueError("--dual-camera 只能用于实时摄像头模式。")
     if (args.left is None) != (args.right is None):
@@ -150,6 +184,8 @@ def _validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--focal-px 必须为正数。")
     if args.baseline_m is not None and args.baseline_m <= 0:
         raise ValueError("--baseline-m 必须为正数。")
+    if args.calibration is not None and args.focal_px is not None:
+        raise ValueError("--calibration 不能与手动焦距和基线参数同时使用。")
     if args.stereo_camera < 0 or args.left_camera < 0 or args.right_camera < 0:
         raise ValueError("摄像头索引不能为负数。")
     if (
@@ -182,6 +218,18 @@ def _load_inputs(
     if left.shape != right.shape:
         raise ValueError("左右图像尺寸必须一致。")
     return left, right, "files", args.focal_px, args.baseline_m
+
+
+def _select_calibration(
+    args: argparse.Namespace,
+) -> tuple[StereoCalibration | None, Path | None]:
+    if args.demo or args.focal_px is not None:
+        return None, None
+    if args.calibration is not None:
+        return load_calibration(args.calibration), args.calibration
+    if _is_live_mode(args) and DEFAULT_CALIBRATION_PATH.is_file():
+        return load_calibration(DEFAULT_CALIBRATION_PATH), DEFAULT_CALIBRATION_PATH
+    return None, None
 
 
 def _read_image(path: Path) -> Image:
@@ -219,6 +267,7 @@ def _build_metadata(
     depth: FloatImage | None,
     focal_px: float | None,
     baseline_m: float | None,
+    calibration_path: Path | None,
 ) -> dict[str, object]:
     valid_disparity = np.isfinite(disparity) & (disparity > 0)
     return {
@@ -227,6 +276,12 @@ def _build_metadata(
         "height": int(image.shape[0]),
         "focal_px": focal_px,
         "baseline_m": baseline_m,
+        "calibration_file": (
+            str(calibration_path.resolve()) if calibration_path is not None else None
+        ),
+        "calibration_placeholder": (
+            input_mode != "demo" and calibration_path is None and depth is not None
+        ),
         "depth_available": depth is not None,
         "valid_disparity_pixels": int(np.count_nonzero(valid_disparity)),
         "valid_disparity_ratio": float(np.mean(valid_disparity)),
@@ -239,7 +294,7 @@ def _print_summary(metadata: dict[str, object]) -> None:
     print(f"图像尺寸：{metadata['width']} × {metadata['height']}")
     print(f"有效视差像素：{metadata['valid_disparity_pixels']}")
     if metadata["depth_available"]:
-        print("深度可用：可点击深度图查询模拟距离。")
+        print("深度可用：可点击深度图查询距离。")
     else:
         print("深度不可用：请同时提供焦距和基线参数。")
 

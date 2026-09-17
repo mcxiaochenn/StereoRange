@@ -130,13 +130,20 @@ def test_different_image_sizes_return_error(tmp_path: Path, capsys) -> None:
     assert "左右图像尺寸必须一致" in capsys.readouterr().err
 
 
-def test_default_mode_dispatches_to_side_by_side_stereo_camera(monkeypatch) -> None:
+def test_default_mode_dispatches_to_side_by_side_stereo_camera(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
     received: dict[str, object] = {}
 
     def fake_run_live_stereo_camera(**kwargs) -> None:
         received.update(kwargs)
 
     monkeypatch.setattr("main.run_live_stereo_camera", fake_run_live_stereo_camera)
+    monkeypatch.setattr(
+        "main.DEFAULT_CALIBRATION_PATH",
+        tmp_path / "missing-calibration.npz",
+    )
 
     assert main([]) == 0
     assert received["camera_index"] == 0

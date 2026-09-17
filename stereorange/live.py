@@ -9,6 +9,7 @@ from typing import Any
 import cv2
 import numpy as np
 
+from stereorange.calibration import StereoRectifier, split_side_by_side
 from stereorange.config import DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH
 from stereorange.core import (
     FloatImage,
@@ -27,6 +28,8 @@ def run_live_stereo_camera(
     focal_px: float,
     baseline_m: float,
     output_dir: Path | None,
+    rectifier: StereoRectifier | None = None,
+    calibration_path: Path | None = None,
 ) -> None:
     """读取单个横向拼接输出的双目摄像头，并拆分左右画面。"""
 
@@ -37,15 +40,7 @@ def run_live_stereo_camera(
             ok, frame = capture.read()
             if not ok or frame is None:
                 raise ValueError(f"无法从双目摄像头 {camera_index} 读取画面。")
-            height, width = frame.shape[:2]
-            if height < 32 or width < 128 or width % 2 != 0:
-                raise ValueError(
-                    "双目摄像头画面必须可横向等分，且每侧至少为 64×32 像素。"
-                )
-            middle = width // 2
-            left = np.ascontiguousarray(frame[:, :middle])
-            right = np.ascontiguousarray(frame[:, middle:])
-            return left, right
+            return split_side_by_side(frame)
 
         _run_live_loop(
             read_pair=read_pair,
@@ -55,7 +50,13 @@ def run_live_stereo_camera(
             metadata_base={
                 "input_mode": "stereo_camera",
                 "camera_index": camera_index,
+                "calibration_file": (
+                    str(calibration_path.resolve())
+                    if calibration_path is not None
+                    else None
+                ),
             },
+            rectifier=rectifier,
         )
     finally:
         capture.release()
@@ -68,6 +69,8 @@ def run_live_cameras(
     focal_px: float,
     baseline_m: float,
     output_dir: Path | None,
+    rectifier: StereoRectifier | None = None,
+    calibration_path: Path | None = None,
 ) -> None:
     """依次读取两个独立摄像头，并实时显示双目处理结果。"""
 
@@ -103,7 +106,13 @@ def run_live_cameras(
                 "input_mode": "cameras",
                 "left_camera_index": left_index,
                 "right_camera_index": right_index,
+                "calibration_file": (
+                    str(calibration_path.resolve())
+                    if calibration_path is not None
+                    else None
+                ),
             },
+            rectifier=rectifier,
         )
     finally:
         left_capture.release()
@@ -118,6 +127,7 @@ def _run_live_loop(
     baseline_m: float,
     output_dir: Path | None,
     metadata_base: dict[str, object],
+    rectifier: StereoRectifier | None = None,
 ) -> None:
     last_result: tuple[Image, FloatImage, Image, FloatImage, Image] | None = None
     click_state: dict[str, Any] = {"depth": None, "point": None}
@@ -144,14 +154,19 @@ def _run_live_loop(
             print(f"坐标 ({x}, {y})：距离 {value:.3f} m")
 
     cv2.setMouseCallback(depth_window, on_mouse)
-    print(
-        "警告：实时模式当前使用未标定的默认焦距和基线，"
-        "显示距离仅供流程演示。"
-    )
+    if rectifier is None:
+        print(
+            "警告：实时模式当前使用未标定的默认焦距和基线，"
+            "显示距离仅供流程演示。"
+        )
+    else:
+        print("已加载双目标定参数，实时画面将在视差计算前完成立体校正。")
     print("按 Q 或 Esc 退出；点击深度图可查询当前位置的估算距离。")
 
     while True:
         left, right = read_pair()
+        if rectifier is not None:
+            left, right = rectifier.rectify(left, right)
         disparity = compute_disparity(left, right)
         depth = disparity_to_depth(disparity, focal_px, baseline_m)
         disparity_preview = colorize_values(disparity, cv2.COLORMAP_TURBO)
@@ -186,7 +201,7 @@ def _run_live_loop(
             "height": int(left.shape[0]),
             "focal_px": focal_px,
             "baseline_m": baseline_m,
-            "calibration_placeholder": True,
+            "calibration_placeholder": rectifier is None,
             "depth_available": True,
             "valid_disparity_pixels": valid_pixels,
             "valid_disparity_ratio": valid_pixels / disparity.size,

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm">
+  <title>9x6 inner corners, 25 mm squares</title>
+  <rect x="0" y="0" width="297mm" height="210mm" fill="white" />
+  <rect x="23.5mm" y="17.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="73.5mm" y="17.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="123.5mm" y="17.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="173.5mm" y="17.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="223.5mm" y="17.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="48.5mm" y="42.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="98.5mm" y="42.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="148.5mm" y="42.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="198.5mm" y="42.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="248.5mm" y="42.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="23.5mm" y="67.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="73.5mm" y="67.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="123.5mm" y="67.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="173.5mm" y="67.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="223.5mm" y="67.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="48.5mm" y="92.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="98.5mm" y="92.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="148.5mm" y="92.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="198.5mm" y="92.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="248.5mm" y="92.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="23.5mm" y="117.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="73.5mm" y="117.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="123.5mm" y="117.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="173.5mm" y="117.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="223.5mm" y="117.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="48.5mm" y="142.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="98.5mm" y="142.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="148.5mm" y="142.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="198.5mm" y="142.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="248.5mm" y="142.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="23.5mm" y="167.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="73.5mm" y="167.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="123.5mm" y="167.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="173.5mm" y="167.5mm" width="25mm" height="25mm" fill="black" />
+  <rect x="223.5mm" y="167.5mm" width="25mm" height="25mm" fill="black" />
+</svg>
