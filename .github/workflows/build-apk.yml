@@ -115,26 +115,46 @@ jobs:
           $null = Install-Package 'platform-tools' -Required $false
 
           $compileSdk = $env:ANDROID_COMPILE_SDK
-          $okPlatform = Install-Package "platforms;android-$compileSdk"
+          $platformCandidates = @(
+            "platforms;android-$compileSdk",
+            "platforms;android-$compileSdk.0",
+            "platforms;android-$compileSdk.1",
+            "platforms;android-$compileSdk.2",
+            "platforms;android-$compileSdk.2-beta3",
+            "platforms;android-$compileSdk.2-beta2",
+            "platforms;android-$compileSdk.2-beta1"
+          )
+          $okPlatform = $false
+          foreach ($pkg in $platformCandidates) {
+            if (Install-Package $pkg) {
+              $okPlatform = $true
+              Write-Host "使用平台包：$pkg"
+              break
+            }
+          }
           if (-not $okPlatform) {
             Write-Host '列出现有 platforms 以便回退…'
             $null = Invoke-SdkManager '--list'
             $listText = ''
             if (Test-Path $outFile) { $listText = Get-Content $outFile -Raw }
             if (Test-Path $errFile) { $listText += Get-Content $errFile -Raw }
-            $versions = [regex]::Matches($listText, 'platforms;android-(\d+)') |
-              ForEach-Object { [int]$_.Groups[1].Value } |
+            $versions = [regex]::Matches($listText, 'platforms;android-(\d+(?:\.\d+)?)') |
+              ForEach-Object { $_.Groups[1].Value } |
               Sort-Object -Unique -Descending
             Write-Host ("remote platforms: " + (($versions | ForEach-Object { "android-$_" }) -join ', '))
-            $fallback = $versions | Where-Object { $_ -le [int]$compileSdk } | Select-Object -First 1
-            if (-not $fallback) { $fallback = $versions | Select-Object -First 1 }
-            if (-not $fallback) { throw "远程无可用 platforms，compileSdk=$compileSdk" }
-            Write-Host "回退 compileSdk: $compileSdk -> $fallback"
-            $compileSdk = "$fallback"
-            if (-not (Install-Package "platforms;android-$compileSdk")) {
-              throw "platforms;android-$compileSdk 安装失败"
+            $ok = $false
+            foreach ($v in $versions) {
+              $major = [int](($v -split '\.')[0])
+              if ($major -gt [int]$compileSdk) { continue }
+              if (Install-Package "platforms;android-$v") {
+                "ANDROID_COMPILE_SDK=$major" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+                Write-Host "回退 compileSdk: $compileSdk -> $major (package android-$v)"
+                $compileSdk = "$major"
+                $ok = $true
+                break
+              }
             }
-            "ANDROID_COMPILE_SDK=$compileSdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            if (-not $ok) { throw "platforms 安装失败（目标 API $env:ANDROID_COMPILE_SDK）" }
           }
 
           $buildTools = $env:ANDROID_BUILD_TOOLS
@@ -181,9 +201,11 @@ jobs:
             if (-not $ok) { throw "NDK 安装失败（目标 $env:ANDROID_NDK_VERSION）" }
           }
 
-          $platformDir = Join-Path $sdk "platforms\android-$compileSdk"
+          $platformDir = Get-ChildItem (Join-Path $sdk 'platforms\android-*') -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match "^android-$compileSdk(\.|$)" } |
+            Select-Object -First 1
           $ndkDir = Join-Path $sdk "ndk\$ndkVersion"
-          if (!(Test-Path $platformDir)) { throw "平台目录不存在：$platformDir" }
+          if (-not $platformDir) { throw "平台目录不存在：platforms\android-$compileSdk*" }
           if (!(Test-Path $ndkDir)) { throw "NDK 目录不存在：$ndkDir" }
           $zipalign = Join-Path $sdk "build-tools\$buildTools\zipalign.exe"
           if (!(Test-Path $zipalign)) { throw "缺少 zipalign：$zipalign" }
