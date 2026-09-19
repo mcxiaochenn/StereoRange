@@ -107,13 +107,20 @@ python calibrate.py pattern --output-dir assets
 
 ### 2. 采集标定图像
 
+重新标定时，不能把其他分辨率图片与新的 `320 × 240` 单目图片混在同一目录。删除 `calibration.npz` 只会删除求解结果，不会清空历史图片或重置采集计数。建议为本次标定使用一个新目录：
+
+```powershell
+python calibrate.py capture --camera 0 --target 30 --output-dir private-data\images_320x240
+python calibrate.py solve --images private-data\images_320x240 --square-mm 25
+```
+
 连接当前横向拼接双目摄像头后运行：
 
 ```powershell
 python calibrate.py capture --camera 0 --target 25
 ```
 
-窗口中左右两侧都显示角点连线并出现 `READY` 后，按空格保存一组；按 `Q` 或 `Esc` 结束。图像默认保存到私有子模块的 `private-data/images`。
+程序优先使用 Windows MSMF 后端，并请求低延迟模式：MJPG、30 FPS、总画面 `640 × 240`，左右每侧为 `320 × 240`；MSMF 不可用时才回退 DirectShow。左右两侧都显示角点连线并出现 `READY` 后，按空格保存一组；按 `Q` 或 `Esc` 结束。图像默认保存到私有子模块的 `private-data/images`。
 
 建议采集 `25～30` 组，过程中保持相机本体和左右镜头相对位置不变，并让标定板：
 
@@ -153,7 +160,7 @@ python main.py
 python main.py --calibration path\to\calibration.npz
 ```
 
-程序会先对左右画面去畸变并做立体校正，再计算视差和深度。标定分辨率必须与每侧实时画面的分辨率一致；当前相机总画面为 `640 × 240` 时，每侧标定分辨率应为 `320 × 240`。
+程序会先对左右画面去畸变并做立体校正，再计算视差和深度。标定分辨率必须与每侧实时画面的分辨率一致；当前总画面为 `640 × 240`，因此每侧标定分辨率必须为 `320 × 240`。其他分辨率生成的标定文件不能直接用于该模式。
 
 ## 快速开始
 
@@ -164,7 +171,7 @@ private-data/calibration.npz
 private-data/models/yolox_nano.onnx
 ```
 
-默认读取索引 `0` 的双目摄像头，将 `640 × 240` 横向拼接画面等分为两幅 `320 × 240` 图，并启动一体化比赛界面：
+默认读取索引 `0` 的双目摄像头，请求 MJPG、30 FPS、`640 × 240` 低延迟模式，将横向拼接画面等分为两幅 `320 × 240` 图，并启动一体化比赛界面：
 
 ```powershell
 python main.py
@@ -257,6 +264,7 @@ python main.py --left left.png --right right.png --focal-px 700 --baseline-m 0.1
 - 物体框距离来自双目深度，不是检测模型直接推算的距离；低纹理、反光、遮挡和视差无效区域会显示“距离不可用”；
 - 不存在标定文件时，实时模式的默认焦距和基线仍是占位值；
 - 默认要求单设备输出可横向等分的左右画面；
+- 当前使用每侧 `320 × 240` 兼顾实时性；继续提高分辨率会显著增加 StereoSGBM 计算量；
 - 双设备模式只是依次读取两个摄像头，不包含硬件级帧同步；
 - 标定结果只适用于标定时未改变镜头相对位置和分辨率的同一套设备；
 - 当前使用普通针孔相机模型，不是鱼眼模型；若实拍呈现明显鱼眼畸变，需要另行改用 OpenCV fisheye 模型；

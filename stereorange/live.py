@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 
 from stereorange.calibration import StereoRectifier, split_side_by_side
+from stereorange.camera import configure_stereo_capture
 from stereorange.config import DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH
 from stereorange.core import (
     FloatImage,
@@ -33,7 +34,7 @@ def run_live_stereo_camera(
 ) -> None:
     """读取单个横向拼接输出的双目摄像头，并拆分左右画面。"""
 
-    capture = _open_camera(camera_index)
+    capture = _open_camera(camera_index, stereo=True)
     try:
 
         def read_pair() -> tuple[Image, Image]:
@@ -217,14 +218,19 @@ def _run_live_loop(
         print(f"退出前最后一帧结果已保存到：{output_dir.resolve()}")
 
 
-def _open_camera(index: int):
-    capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+def _open_camera(index: int, stereo: bool = False):
+    capture = cv2.VideoCapture(index, cv2.CAP_MSMF)
+    if not capture.isOpened():
+        capture.release()
+        capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
     if not capture.isOpened():
         capture.release()
         capture = cv2.VideoCapture(index)
     if not capture.isOpened():
         capture.release()
         raise ValueError(f"无法打开摄像头索引 {index}。")
+    if stereo:
+        configure_stereo_capture(capture)
     return capture
 
 

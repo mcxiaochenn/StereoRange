@@ -18,7 +18,12 @@ from stereorange.calibration import (
     solve_stereo_calibration,
     split_side_by_side,
 )
-from stereorange.config import DEFAULT_STEREO_CAMERA_INDEX
+from stereorange.camera import configure_stereo_capture
+from stereorange.config import (
+    DEFAULT_STEREO_CAMERA_INDEX,
+    DEFAULT_STEREO_FRAME_HEIGHT,
+    DEFAULT_STEREO_FRAME_WIDTH,
+)
 from stereorange.pattern import generate_checkerboard_files
 
 
@@ -101,11 +106,31 @@ def capture_pairs(
     capture = _open_camera(camera_index)
     saved = _next_pair_index(output_dir) - 1
     print("空格：保存当前有效图像对；Q 或 Esc：退出。")
+    for name in ("StereoRange Calibration - Left", "StereoRange Calibration - Right"):
+        cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(name, 640, 480)
+    resolution_checked = False
     try:
         while True:
             ok, frame = capture.read()
             if not ok or frame is None:
                 raise ValueError(f"无法从双目摄像头 {camera_index} 读取画面。")
+            if not resolution_checked:
+                actual = (frame.shape[1], frame.shape[0])
+                expected = (
+                    DEFAULT_STEREO_FRAME_WIDTH,
+                    DEFAULT_STEREO_FRAME_HEIGHT,
+                )
+                if actual != expected:
+                    raise ValueError(
+                        "相机未进入指定双目分辨率："
+                        f"期望 {expected[0]}×{expected[1]}，实际 {actual[0]}×{actual[1]}。"
+                    )
+                print(
+                    f"采集分辨率：{actual[0]}×{actual[1]}，"
+                    f"每侧 {actual[0] // 2}×{actual[1]}。"
+                )
+                resolution_checked = True
             left, right = split_side_by_side(frame)
             detected = detect_chessboard_pair(left, right, board_size)
             left_preview, right_preview = left.copy(), right.copy()
@@ -217,13 +242,17 @@ def _validate_capture_args(args: argparse.Namespace) -> None:
 
 
 def _open_camera(index: int):
-    capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+    capture = cv2.VideoCapture(index, cv2.CAP_MSMF)
+    if not capture.isOpened():
+        capture.release()
+        capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
     if not capture.isOpened():
         capture.release()
         capture = cv2.VideoCapture(index)
     if not capture.isOpened():
         capture.release()
         raise ValueError(f"无法打开摄像头索引 {index}。")
+    configure_stereo_capture(capture)
     return capture
 
 

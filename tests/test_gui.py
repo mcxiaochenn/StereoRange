@@ -94,5 +94,5 @@ def test_camera_open_failure_returns_cleanly(monkeypatch) -> None:
     monkeypatch.setattr("stereorange.gui.cv2.VideoCapture", fake_video_capture)
 
     assert _open_camera(0) is None
-    assert len(captures) == 2
+    assert len(captures) == 3
     assert all(capture.released for capture in captures)

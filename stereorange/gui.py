@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
 from stereorange import PROJECT_CREDIT
 from stereorange.analysis import PointKind, ProcessedFrame, TrackingMode
 from stereorange.calibration import StereoRectifier, load_calibration, split_side_by_side
+from stereorange.camera import configure_stereo_capture
 from stereorange.config import DEFAULT_BASELINE_M, DEFAULT_FOCAL_PX
 from stereorange.detection import YoloXDetector
 from stereorange.pipeline import FrameProcessor
@@ -244,6 +245,10 @@ class VideoWorker(QThread):
                 self.system_state.emit(dict(self._state))
                 self.message.emit("摄像头已断开", "读取画面失败，正在自动重连。")
                 continue
+            size = f"{frame.shape[1]}×{frame.shape[0]}"
+            if self._state.get("camera_size") != size:
+                self._state["camera_size"] = size
+                self.system_state.emit(dict(self._state))
             try:
                 left, right = split_side_by_side(frame)
                 result = self._processor.process(left, right)
@@ -465,7 +470,11 @@ class StereoRangeWindow(QMainWindow):
 
     def _on_system_state(self, state: dict[str, Any]) -> None:
         self.camera_badge.set_state(
-            "已连接" if state["camera"] else "未连接",
+            (
+                f"已连接 {state.get('camera_size', '')}".strip()
+                if state["camera"]
+                else "未连接"
+            ),
             "ok" if state["camera"] else "error",
         )
         self.model_badge.set_state(
@@ -654,13 +663,17 @@ def run_gui(
 
 
 def _open_camera(index: int):
-    capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+    capture = cv2.VideoCapture(index, cv2.CAP_MSMF)
+    if not capture.isOpened():
+        capture.release()
+        capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
     if not capture.isOpened():
         capture.release()
         capture = cv2.VideoCapture(index)
     if not capture.isOpened():
         capture.release()
         return None
+    configure_stereo_capture(capture)
     return capture
 
 
