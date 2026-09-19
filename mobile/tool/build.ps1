@@ -31,7 +31,19 @@ try {
         }
         if(!(Test-Path -LiteralPath $env:STEREORANGE_KEYSTORE) -or !$env:STEREORANGE_KEY_ALIAS -or !$env:STEREORANGE_STORE_PASSWORD -or !$env:STEREORANGE_KEY_PASSWORD){throw '正式签名文件或密码配置不完整。'}
     }
-    $flutterVersion=(& flutter --version --machine | ConvertFrom-Json).frameworkVersion
+    $flutterVersionRaw = (& flutter --version --machine 2>&1 | Out-String)
+    $flutterVersion = $null
+    if ($flutterVersionRaw -match '\{[\s\S]*\}') {
+        try { $flutterVersion = (($Matches[0] | ConvertFrom-Json).frameworkVersion) } catch { $flutterVersion = $null }
+    }
+    if (-not $flutterVersion -and $flutterVersionRaw -match 'Flutter\s+(\d+\.\d+\.\d+)') {
+        $flutterVersion = $Matches[1]
+    }
+    if (-not $flutterVersion) {
+        $plain = (& flutter --version 2>&1 | Out-String)
+        if ($plain -match 'Flutter\s+(\d+\.\d+\.\d+)') { $flutterVersion = $Matches[1] }
+    }
+    if(-not $flutterVersion){throw "无法解析 Flutter 版本。原始输出：$($flutterVersionRaw.Substring(0,[Math]::Min(300,$flutterVersionRaw.Length)))"}
     if($flutterVersion -ne '3.47.1'){throw "需要 Flutter 3.47.1，当前为 $flutterVersion；请切换 SDK 后重试。"}
     # 仅影响本次进程，规避 Windows 长临时路径导致的 Java Unix Socket 错误。
     $javaTemp=Join-Path $mobileRoot '.native\java-tmp'
