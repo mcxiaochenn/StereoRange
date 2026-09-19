@@ -20,3 +20,4 @@ mobile/artifacts/
 credentials.clixml
 *.hprof
 .playwright-cli/
+assets/papers/

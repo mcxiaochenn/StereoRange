@@ -32,11 +32,12 @@ StereoRange：双目视觉 + 目标识别的实时测距系统。
 | `mobile/` | Android（Flutter + Rust + Kotlin） |
 | `private-data/` | 私有子模块：标定、模型、实拍图（未授权不可见） |
 | `assets/3d-print/` | 3D 打印底座与公差测试模型 |
-| `assets/papers/` | 论文等文档稿 |
 | `docs/releases/` | 版本发布说明 |
 | `docs/diary/` | 开发日记 + 索引 |
-| `assets/` | 公开静态资源：棋盘格、3D 模型、论文 |
+| `assets/` | 公开静态资源：棋盘格、3D 模型 |
 | `tests/` | Python 测试 |
+
+> 论文等文稿目录 `assets/papers/` 仅本机保留，已在 `.gitignore` 中忽略，不提交到公开仓库。
 
 ## 常用命令
 

@@ -10,7 +10,7 @@
 
 构建、安装、标定导入及实机验收说明见 [Android 开发与使用说明](mobile/README.md)。个人模型与标定只从私有子模块准备，包含个人资源的 APK 不公开发布。
 
-正式下载：[StereoRange v1.0.2](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.2)（Release tag 为 `vX.Y.Z`；APK 文件名带自动附加的 `+提交次数`，本包为 `StereoRange-v1.0.2+26-android-arm64.apk`）。公开包仅内置官方识别模型，真实测距前需导入自己的标定文件。应用设置页可一键打开 GitHub 仓库。3D 打印模型位于 [assets/3d-print](assets/3d-print/)，论文草稿位于 [assets/papers](assets/papers/)。
+正式下载：[StereoRange v1.0.2](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.2)（Release tag 为 `vX.Y.Z`；APK 文件名带自动附加的 `+提交次数`，本包为 `StereoRange-v1.0.2+26-android-arm64.apk`）。公开包仅内置官方识别模型，真实测距前需导入自己的标定文件。应用设置页可一键打开 GitHub 仓库。3D 打印模型位于 [assets/3d-print](assets/3d-print/)。论文等文稿仅保存在作者本机，不纳入本公开仓库。
 
 开发规范见 [AGENTS.md](AGENTS.md)，开发日记与索引见 [docs/diary](docs/diary/INDEX.md)。产品版本单源为根目录 `VERSION`，CI 见 [.github/workflows/build-apk.yml](.github/workflows/build-apk.yml)（push main 出 Actions 产物；`vX.Y.Z[+N]` tag 校验版本并挂 Release）。
 
