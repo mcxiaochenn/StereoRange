@@ -53,30 +53,44 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+          accept-android-sdk-licenses: true
 
       - name: Install Android packages
         shell: pwsh
         run: |
           $sdk = $env:ANDROID_HOME
           if (-not $sdk) { throw 'ANDROID_HOME 未设置' }
-          $sdkmanager = Join-Path $sdk 'cmdline-tools/latest/bin/sdkmanager.bat'
-          if (!(Test-Path $sdkmanager)) {
-            $sdkmanager = Get-ChildItem (Join-Path $sdk 'cmdline-tools/*/bin/sdkmanager.bat') | Select-Object -First 1 -ExpandProperty FullName
+          $candidates = @(
+            (Join-Path $sdk 'cmdline-tools\latest\bin\sdkmanager.bat'),
+            (Join-Path $sdk 'cmdline-tools\16.0\bin\sdkmanager.bat')
+          )
+          $sdkmanager = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $sdkmanager) {
+            $sdkmanager = Get-ChildItem (Join-Path $sdk 'cmdline-tools\*\bin\sdkmanager.bat') -ErrorAction SilentlyContinue |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1 -ExpandProperty FullName
           }
-          if (-not $sdkmanager) { throw '找不到 sdkmanager' }
+          if (-not $sdkmanager) { throw "找不到 sdkmanager，SDK=$sdk" }
+          Write-Host "Using sdkmanager: $sdkmanager"
+          $yes = 'y'
+          foreach ($i in 1..30) { $yes | Out-Null }
+          $answers = ("y`n" * 80)
+          $answers | & $sdkmanager --sdk_root="$sdk" --licenses | Out-Host
           $packages = @(
-            "platform-tools",
+            'platform-tools',
             "platforms;android-$env:ANDROID_COMPILE_SDK",
             "build-tools;$env:ANDROID_BUILD_TOOLS",
             "ndk;$env:ANDROID_NDK_VERSION"
           )
-          $yes = 'y'
           foreach ($p in $packages) {
             Write-Host "Installing $p"
-            $yes | & $sdkmanager --sdk_root="$sdk" $p
+            $yes | & $sdkmanager --sdk_root="$sdk" $p | Out-Host
             if ($LASTEXITCODE -ne 0) { throw "sdkmanager 安装失败：$p" }
           }
           "ANDROID_SDK_ROOT=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ANDROID_HOME=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Sync version from single source
         id: version
