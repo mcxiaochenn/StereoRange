@@ -2,7 +2,7 @@
 
 Flutter Material 3 中文界面 + Rust 测距核心。Android 13（API 33）及以上，ARM64 手机，通过 OTG 连接横向拼接 UVC 双目相机。总分辨率固定 640×240、单侧 320×240，请求 30 FPS。Python 桌面版保持独立。
 
-平湖技师学院 · 陆逸尘 · 辰渊尘 · ChenDusk · GitHub @mcxiaochenn
+平湖技师学院 · 陆逸尘（辰渊尘 ChenDusk · @mcxiaochenn）· 周璟雯 · 胡乐毅 · 指导教师 张梁
 
 ## 手机操作
 
@@ -45,6 +45,8 @@ UVCAndroid → Kotlin 帧回调 → JNI 复制到 Rust 自有缓冲区
 - YOLOX Nano 416×416，置信度 0.40、类无关 NMS 0.45。
 
 ## 固定工具链
+
+产品版本以仓库根目录 `VERSION` 为单源，构建前由 `tool/sync-version.ps1` 写入 `pubspec.yaml`（格式 `X.Y.Z+git提交次数`）。CI 工作流见 `.github/workflows/build-apk.yml`。
 
 | 项目 | 版本 |
 |---|---|

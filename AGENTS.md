@@ -8,8 +8,9 @@ StereoRange：双目视觉 + 目标识别的实时测距系统。
 
 - 桌面端：Python（OpenCV StereoSGBM、YOLOX-Nano ONNX、PySide6）
 - Android 端：Flutter Material 3 + Rust（OpenCV/ORT）+ 少量 Kotlin（UVC/USB）
-- 署名：平湖技师学院 · 陆逸尘 · 辰渊尘 · ChenDusk · GitHub @mcxiaochenn
-- 仓库：https://github.com/mcxiaochenn/StereoRange
+- 署名：平湖技师学院 · 陆逸尘（辰渊尘 ChenDusk · @mcxiaochenn，同一人）· 周璟雯 · 胡乐毅 · 指导教师 张梁
+- 分工：陆逸尘（项目主负责/软件/论文实践与审阅）、周璟雯（双目相机外壳建模）、胡乐毅（论文基础理论）；张梁为导师
+- 仓库：https://github.com/mcxiaochenn/StereoRange（GitHub 账号归属陆逸尘，不是独立作者名）
 
 ## 硬约束
 
@@ -87,16 +88,35 @@ cargo +1.98.0 test --locked --manifest-path rust/Cargo.toml
 - 跟踪：EMA `0.25`，`0.5 s` 无有效数据清空。
 - 「全场景可靠深度」与「仅识别物体」**只影响最近/最远点**，中心点不变。
 
+## 版本管理（单源）
+
+- **唯一主版本位置**：仓库根目录 `VERSION`，只维护语义版本 `X.Y.Z`（例如 `1.0.1`）。
+- **产物版本格式**：`vX.Y.Z+<git提交次数>`，例如 `VERSION=1.0.2` 且 `git rev-list --count HEAD=150` → `v1.0.2+150`。
+- `mobile/pubspec.yaml` 的 `version: X.Y.Z+N` **由构建同步生成**，不要手工当主版本改；Flutter 会把 `+N` 用作 `versionCode`，`X.Y.Z` 用作 `versionName`。
+- 同步命令：`pwsh -File mobile\tool\sync-version.ps1`（可选 `-OverrideTag vX.Y.Z+N`）。
+- 本地 `build.ps1` 构建前会自动同步；CI 工作流 `build-apk` 同样先同步再编译。
+- **tag 构建**：正则校验 `^v(\d+\.\d+\.\d+)(?:\+(\d+))?$`；若 tag 语义版本与 `VERSION` 不一致，**以 tag 为准替换本次构建版本**（不改写远程 main 的历史提交）。
+- 提升正式语义版本时只改 `VERSION` 并提交；commit 次数由 Git 自动累计，无需手改。
+- 注意：`versionCode` 必须单调递增，否则真机无法覆盖安装。若历史包的 `versionCode` 高于当前提交数，先提高 `VERSION` 并确认卸载旧包，或等提交数追上。
+
+## CI：`build-apk`
+
+- 文件：`.github/workflows/build-apk.yml`，一 CI 两用。
+- **push 到 main**：自动构建 APK，上传到 Actions 产物。
+- **发布 tag（`vX.Y.Z` 或 `vX.Y.Z+N`）**：校验/替换版本后构建，并将 APK + `SHA256SUMS.txt` 挂到该 tag 的 GitHub Release。
+- tag 正式包需要 Secrets：`STEREORANGE_KEYSTORE_BASE64`、`STEREORANGE_STORE_PASSWORD`、`STEREORANGE_KEY_ALIAS`、`STEREORANGE_KEY_PASSWORD`。
+- 未配置签名时：普通 push 会构建 debug APK 供下载；tag 构建直接失败并提示配置密钥。
+
 ## Git 与 Release
 
 - 分支：`main`。提交信息用 Conventional Commits（中文摘要可接受）。
 - 私有子模块更新顺序：先在 `private-data/` commit+push，再在主仓库更新子模块指针。
 - 公开 APK **只内置官方 YOLOX 模型**，不含个人标定；真实测距需导入自己的标定 JSON。
 - Release 产物命名：
-  - `StereoRange-vX.Y.Z-android-arm64.apk`
+  - `StereoRange-vX.Y.Z+<提交次数>-android-arm64.apk`
   - `SHA256SUMS.txt`
-  - `StereoRange-vX.Y.Z-3d-print.zip`（如包含）
-- 发布说明写在 `docs/releases/vX.Y.Z.md`，并同步更新根 `README.md` 下载链接。
+  - `StereoRange-vX.Y.Z+<提交次数>-3d-print.zip`（如包含）
+- 发布说明写在 `docs/releases/vX.Y.Z.md`；下载链接与版本叙述以 `VERSION` 与 CI 产物为准。
 - 签名密钥在仓库外 `D:\Android\Signing\StereoRange\`，**永不入库**。
 
 ## 日记规范

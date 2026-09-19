@@ -1,0 +1,232 @@
+name: build-apk
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: 3.47.1
+  RUST_VERSION: 1.98.0
+  ANDROID_NDK_VERSION: 28.2.13676358
+  ANDROID_BUILD_TOOLS: 36.0.0
+  ANDROID_COMPILE_SDK: 37
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: windows-latest
+    outputs:
+      version_full: ${{ steps.version.outputs.full }}
+      version_tag: ${{ steps.version.outputs.tag }}
+      version_replaced: ${{ steps.version.outputs.replaced }}
+      artifact_name: ${{ steps.pack.outputs.artifact_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages
+        shell: pwsh
+        run: |
+          $sdk = $env:ANDROID_HOME
+          if (-not $sdk) { throw 'ANDROID_HOME 未设置' }
+          $sdkmanager = Join-Path $sdk 'cmdline-tools/latest/bin/sdkmanager.bat'
+          if (!(Test-Path $sdkmanager)) {
+            $sdkmanager = Get-ChildItem (Join-Path $sdk 'cmdline-tools/*/bin/sdkmanager.bat') | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $sdkmanager) { throw '找不到 sdkmanager' }
+          $packages = @(
+            "platform-tools",
+            "platforms;android-$env:ANDROID_COMPILE_SDK",
+            "build-tools;$env:ANDROID_BUILD_TOOLS",
+            "ndk;$env:ANDROID_NDK_VERSION"
+          )
+          $yes = 'y'
+          foreach ($p in $packages) {
+            Write-Host "Installing $p"
+            $yes | & $sdkmanager --sdk_root="$sdk" $p
+            if ($LASTEXITCODE -ne 0) { throw "sdkmanager 安装失败：$p" }
+          }
+          "ANDROID_SDK_ROOT=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Sync version from single source
+        id: version
+        shell: pwsh
+        run: |
+          $sourceBase = (Get-Content .\VERSION -Raw).Trim()
+          $tag = $null
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $tag = '${{ github.ref_name }}'
+            Write-Host "触发方式：tag $tag"
+          } else {
+            Write-Host '触发方式：push main（语义版本取 VERSION，versionCode=git 提交次数）'
+          }
+          if ($tag -and $tag -notmatch '^v(\d+\.\d+\.\d+)(?:\+(\d+))?$') {
+            throw "tag 不符合版本规范 vX.Y.Z[+build]：$tag"
+          }
+          $args = @{}
+          if ($tag) { $args.OverrideTag = $tag }
+          & .\mobile\tool\sync-version.ps1 @args
+          if ($LASTEXITCODE -ne 0) { throw '版本同步失败' }
+          $full = ((Get-Content .\mobile\pubspec.yaml | Where-Object { $_ -match '^version:\s*(.+)$' } | Select-Object -First 1) -replace '^version:\s*','').Trim()
+          if (-not $full) { throw '无法从 pubspec 读取版本' }
+          Write-Host "pubspec version = $full"
+          $replaced = ''
+          if ($tag) {
+            $tagBase = ($tag -replace '^v','' -replace '\+.*$','')
+            if ($sourceBase -ne $tagBase) {
+              $replaced = "$sourceBase -> $tagBase"
+              Write-Host "::notice title=版本已替换::源码 VERSION($sourceBase) 与 tag($tagBase) 不一致，构建时已替换为 tag 版本"
+            } else {
+              Write-Host '源码版本与 tag 一致，无需替换'
+            }
+          }
+          "full=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=v$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "replaced=$replaced" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "source_base=$sourceBase" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Decide build mode
+        id: mode
+        shell: pwsh
+        run: |
+          $hasSigning = -not [string]::IsNullOrWhiteSpace('${{ secrets.STEREORANGE_KEYSTORE_BASE64 }}')
+          $isTag = '${{ github.ref_type }}' -eq 'tag'
+          if ($isTag -and -not $hasSigning) {
+            throw 'tag 发布构建需要签名密钥。请配置 Secrets：STEREORANGE_KEYSTORE_BASE64、STEREORANGE_STORE_PASSWORD、STEREORANGE_KEY_ALIAS、STEREORANGE_KEY_PASSWORD'
+          }
+          if ($hasSigning) {
+            "mode=release" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "public=True" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "mode=debug" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "public=False" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            Write-Host '::notice title=未配置签名::当前将构建 debug APK（可在 Actions 产物中下载）'
+          }
+
+      - name: Prepare signing
+        if: steps.mode.outputs.mode == 'release'
+        shell: pwsh
+        env:
+          STEREORANGE_KEYSTORE_BASE64: ${{ secrets.STEREORANGE_KEYSTORE_BASE64 }}
+          STEREORANGE_STORE_PASSWORD: ${{ secrets.STEREORANGE_STORE_PASSWORD }}
+          STEREORANGE_KEY_ALIAS: ${{ secrets.STEREORANGE_KEY_ALIAS }}
+          STEREORANGE_KEY_PASSWORD: ${{ secrets.STEREORANGE_KEY_PASSWORD }}
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'stereorange-signing'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $p12 = Join-Path $dir 'release.p12'
+          [IO.File]::WriteAllBytes($p12, [Convert]::FromBase64String($env:STEREORANGE_KEYSTORE_BASE64))
+          "STEREORANGE_KEYSTORE=$p12" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "STEREORANGE_STORE_PASSWORD=$env:STEREORANGE_STORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "STEREORANGE_KEY_ALIAS=$env:STEREORANGE_KEY_ALIAS" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "STEREORANGE_KEY_PASSWORD=$env:STEREORANGE_KEY_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build APK
+        shell: pwsh
+        env:
+          STEREORANGE_KEYSTORE: ${{ env.STEREORANGE_KEYSTORE }}
+          STEREORANGE_STORE_PASSWORD: ${{ env.STEREORANGE_STORE_PASSWORD }}
+          STEREORANGE_KEY_ALIAS: ${{ env.STEREORANGE_KEY_ALIAS }}
+          STEREORANGE_KEY_PASSWORD: ${{ env.STEREORANGE_KEY_PASSWORD }}
+        run: |
+          $mode = '${{ steps.mode.outputs.mode }}'
+          $public = '${{ steps.mode.outputs.public }}' -eq 'True'
+          $versionTag = $null
+          if ('${{ github.ref_type }}' -eq 'tag') { $versionTag = '${{ github.ref_name }}' }
+          $buildArgs = @{
+            Mode = $mode
+            AndroidSdk = $env:ANDROID_HOME
+          }
+          if ($public) { $buildArgs.PublicRelease = $true }
+          if ($versionTag) { $buildArgs.VersionTag = $versionTag }
+          Write-Host "构建参数：$($buildArgs | ConvertTo-Json -Compress)"
+          & .\mobile\tool\build.ps1 @buildArgs
+          if ($LASTEXITCODE -ne 0) { throw 'APK 构建失败' }
+
+      - name: Package artifacts
+        id: pack
+        shell: pwsh
+        run: |
+          $mode = '${{ steps.mode.outputs.mode }}'
+          $full = '${{ steps.version.outputs.full }}'.Trim()
+          if (-not $full) { throw '缺少版本号输出' }
+          $src = "mobile/build/app/outputs/flutter-apk/app-$mode.apk"
+          if (!(Test-Path $src)) { throw "找不到 APK：$src" }
+          $artifactName = "StereoRange-v$full-android-arm64"
+          $outDir = 'mobile/artifacts/ci'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $apkName = "$artifactName.apk"
+          Copy-Item -LiteralPath $src -Destination (Join-Path $outDir $apkName) -Force
+          $hash = (Get-FileHash -LiteralPath (Join-Path $outDir $apkName) -Algorithm SHA256).Hash.ToLower()
+          @(
+            "$hash  $apkName"
+          ) | Set-Content -LiteralPath (Join-Path $outDir 'SHA256SUMS.txt') -Encoding ascii
+          "artifact_name=$artifactName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "apk_path=$outDir/$apkName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "打包完成：$apkName"
+          Write-Host "SHA-256：$hash"
+          "## APK 构建结果" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          Write-Output "- 版本：``v$full``" >> $env:GITHUB_STEP_SUMMARY
+          Write-Output "- 模式：``$mode``" >> $env:GITHUB_STEP_SUMMARY
+          Write-Output "- 文件：``$apkName``" >> $env:GITHUB_STEP_SUMMARY
+          Write-Output "- SHA-256：``$hash``" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pack.outputs.artifact_name }}
+          path: |
+            mobile/artifacts/ci/*.apk
+            mobile/artifacts/ci/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach APK to GitHub Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $apk = '${{ steps.pack.outputs.apk_path }}'
+          $sums = 'mobile/artifacts/ci/SHA256SUMS.txt'
+          gh release view $tag --repo ${{ github.repository }} 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo ${{ github.repository }} --title "StereoRange $tag" --notes "CI 构建产物：$tag" --verify-tag
+            if ($LASTEXITCODE -ne 0) { throw "创建 Release 失败：$tag" }
+          }
+          gh release upload $tag --repo ${{ github.repository }} --clobber $apk $sums
+          if ($LASTEXITCODE -ne 0) { throw '上传 Release 附件失败' }
+          Write-Host "已将 APK 挂到 Release $tag"

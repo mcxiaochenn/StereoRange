@@ -3,7 +3,8 @@ param(
     [string]$AndroidSdk='D:\Android\Sdk',
     [switch]$WithPrivateData,
     [switch]$PublicRelease,
-    [string]$SigningDirectory='D:\Android\Signing\StereoRange'
+    [string]$SigningDirectory='D:\Android\Signing\StereoRange',
+    [string]$VersionTag
 )
 $ErrorActionPreference='Stop'
 $mobileRoot=Split-Path $PSScriptRoot -Parent
@@ -15,6 +16,9 @@ foreach($name in @('STEREORANGE_KEYSTORE','STEREORANGE_STORE_PASSWORD','STEREORA
 Push-Location $mobileRoot
 try {
     $env:STEREORANGE_PUBLIC_RELEASE=if($PublicRelease){'true'}else{'false'}
+    # 版本单源：根目录 VERSION + git 提交次数；tag 构建时用 tag 覆盖/校验。
+    if($VersionTag){ $null = & "$PSScriptRoot\sync-version.ps1" -OverrideTag $VersionTag }
+    else { $null = & "$PSScriptRoot\sync-version.ps1" }
     if($Mode -eq 'release'){
         if(!$env:STEREORANGE_KEYSTORE){
             $credentialPath=Join-Path $SigningDirectory 'credentials.clixml'

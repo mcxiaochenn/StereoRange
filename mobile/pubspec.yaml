@@ -1,7 +1,7 @@
 name: stereorange
 description: "StereoRange 双目视觉智能测距 · 平湖技师学院"
 publish_to: 'none'
-version: 1.0.1+101
+version: 1.0.1+13
 
 environment:
   sdk: ^3.13.1

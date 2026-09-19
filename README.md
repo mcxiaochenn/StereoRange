@@ -2,7 +2,7 @@
 
 基于双目视觉视差原理的任意表面测距系统，桌面端使用 Python，Android 端使用 Flutter + Rust。
 
-> 平湖技师学院 · 陆逸尘 · 辰渊尘 · GitHub [@mcxiaochenn](https://github.com/mcxiaochenn) · ChenDusk
+> 平湖技师学院 · 陆逸尘（辰渊尘 ChenDusk · [@mcxiaochenn](https://github.com/mcxiaochenn)）· 周璟雯 · 胡乐毅 · 指导教师 张梁
 
 ## Android 版
 
@@ -12,14 +12,17 @@
 
 正式下载：[StereoRange v1.0.1](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.1)（`arm64-v8a`，公开包仅内置官方识别模型，真实测距前需导入自己的标定文件）。应用设置页可一键打开 GitHub 仓库。3D 打印模型位于 [3D-Print](3D-Print/)。
 
-开发规范见 [AGENTS.md](AGENTS.md)，开发日记与索引见 [docs/diary](docs/diary/INDEX.md)。
+开发规范见 [AGENTS.md](AGENTS.md)，开发日记与索引见 [docs/diary](docs/diary/INDEX.md)。产品版本单源为根目录 `VERSION`，CI 见 [.github/workflows/build-apk.yml](.github/workflows/build-apk.yml)（push main 出 Actions 产物；`vX.Y.Z[+N]` tag 校验版本并挂 Release）。
 
 ## 项目信息
 
 - 所属单位：平湖技师学院
-- 项目作者：陆逸尘、辰渊尘
-- GitHub：[@mcxiaochenn](https://github.com/mcxiaochenn)
-- 创作署名：ChenDusk
+- 项目作者：陆逸尘（辰渊尘 · ChenDusk · GitHub [@mcxiaochenn](https://github.com/mcxiaochenn)）、周璟雯、胡乐毅
+- 指导教师：张梁
+- 作者分工：
+  - 陆逸尘：项目主负责（选题、设备选购、资金、软件主开发、论文实践部分与全文审阅）
+  - 周璟雯：双目相机外壳建模
+  - 胡乐毅：论文基础理论部分
 
 ## 项目简介
 
