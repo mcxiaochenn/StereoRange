@@ -31,10 +31,11 @@ StereoRange：双目视觉 + 目标识别的实时测距系统。
 | `stereorange/` | Python 核心：采集、标定、视差、识别、UI、导出 |
 | `mobile/` | Android（Flutter + Rust + Kotlin） |
 | `private-data/` | 私有子模块：标定、模型、实拍图（未授权不可见） |
-| `3D-Print/` | 3D 打印底座与公差测试模型 |
+| `assets/3d-print/` | 3D 打印底座与公差测试模型 |
+| `assets/papers/` | 论文等文档稿 |
 | `docs/releases/` | 版本发布说明 |
 | `docs/diary/` | 开发日记 + 索引 |
-| `assets/` | 公开可打印棋盘格等 |
+| `assets/` | 公开静态资源：棋盘格、3D 模型、论文 |
 | `tests/` | Python 测试 |
 
 ## 常用命令

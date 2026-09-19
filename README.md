@@ -10,7 +10,7 @@
 
 构建、安装、标定导入及实机验收说明见 [Android 开发与使用说明](mobile/README.md)。个人模型与标定只从私有子模块准备，包含个人资源的 APK 不公开发布。
 
-正式下载：[StereoRange v1.0.1](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.1)（`arm64-v8a`，公开包仅内置官方识别模型，真实测距前需导入自己的标定文件）。应用设置页可一键打开 GitHub 仓库。3D 打印模型位于 [3D-Print](3D-Print/)。
+正式下载：[StereoRange v1.0.2+16](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.2%2B16)（`arm64-v8a`，公开包仅内置官方识别模型，真实测距前需导入自己的标定文件）。应用设置页可一键打开 GitHub 仓库。3D 打印模型位于 [assets/3d-print](assets/3d-print/)，论文草稿位于 [assets/papers](assets/papers/)。
 
 开发规范见 [AGENTS.md](AGENTS.md)，开发日记与索引见 [docs/diary](docs/diary/INDEX.md)。产品版本单源为根目录 `VERSION`，CI 见 [.github/workflows/build-apk.yml](.github/workflows/build-apk.yml)（push main 出 Actions 产物；`vX.Y.Z[+N]` tag 校验版本并挂 Release）。
 
@@ -290,6 +290,6 @@ Android 端已实现：Flutter Material 3 界面 + Rust 测距核心 + Kotlin UV
 
 ## 项目状态
 
-桌面 Python 端与 Android 端均已具备演示级能力：标定、识别、三点测距、一体化界面已接通；最新双目标定 RMS 约 `0.378 px`（320×240）。公开 Release 为 [v1.0.1](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.1)。
+桌面 Python 端与 Android 端均已具备演示级能力：标定、识别、三点测距、一体化界面已接通；最新双目标定 RMS 约 `0.378 px`（320×240）。版本源见根目录 `VERSION`，CI 产物与 Release 使用 `vX.Y.Z+提交次数` 形式。
 
 仍待验收：卷尺在 `0.2、0.5、1、2、3 m` 的实物误差记录、连续 30 分钟稳定性与温升、Android 13 实机与 OTG 恢复、Python/Android 同图精度对照。低标定 RMS 不等于真实物距无误差。
