@@ -1,13 +1,16 @@
 param([Parameter(Mandatory)][string]$Apk,[string]$AndroidSdk='D:\Android\Sdk')
 $ErrorActionPreference='Stop'
 $resolved=(Resolve-Path -LiteralPath $Apk).Path
-& "$AndroidSdk\build-tools\36.0.0\zipalign.exe" -c -P 16 -v 4 $resolved
+$buildTools = if ($env:ANDROID_BUILD_TOOLS) { $env:ANDROID_BUILD_TOOLS } else { '36.0.0' }
+$ndkVersion = if ($env:ANDROID_NDK_VERSION) { $env:ANDROID_NDK_VERSION } else { '28.2.13676358' }
+& "$AndroidSdk\build-tools\$buildTools\zipalign.exe" -c -P 16 -v 4 $resolved
 if($LASTEXITCODE -ne 0){throw 'APK ZIP 16 KB 对齐检查失败'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $temporary=Join-Path ([IO.Path]::GetTempPath()) ('stereorange-elf-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $temporary | Out-Null
 $archive=[IO.Compression.ZipFile]::OpenRead($resolved)
-$readelf="$AndroidSdk\ndk\28.2.13676358\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-readelf.exe"
+$readelf="$AndroidSdk\ndk\$ndkVersion\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-readelf.exe"
+if (!(Test-Path $readelf)) { throw "找不到 llvm-readelf：$readelf" }
 try {
     $libraries=@($archive.Entries | Where-Object {$_.FullName -match '^lib/[^/]+/[^/]+\.so$'})
     if(!$libraries.Count){throw 'APK 中没有原生库'}

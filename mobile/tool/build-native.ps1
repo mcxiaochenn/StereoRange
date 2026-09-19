@@ -3,9 +3,10 @@ $ErrorActionPreference = 'Stop'
 $mobileRoot = Split-Path $PSScriptRoot -Parent
 $cache = Join-Path $mobileRoot '.native'
 $triple = if ($Abi -eq 'arm64-v8a') { 'aarch64-linux-android' } else { 'x86_64-linux-android' }
-$ndk = Join-Path $AndroidSdk 'ndk\28.2.13676358'
+$ndkVersion = if ($env:ANDROID_NDK_VERSION) { $env:ANDROID_NDK_VERSION } else { '28.2.13676358' }
+$ndk = Join-Path $AndroidSdk "ndk\$ndkVersion"
 $bin = Join-Path $ndk 'toolchains\llvm\prebuilt\windows-x86_64\bin'
-if (!(Test-Path "$bin\clang.exe")) { throw '缺少 Android NDK 28.2.13676358，请通过 Android Studio SDK Manager 安装。' }
+if (!(Test-Path "$bin\clang.exe")) { throw "缺少 Android NDK $ndkVersion，请通过 Android Studio SDK Manager 安装。" }
 New-Item -ItemType Directory -Force $cache | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 function Fetch-Aar([string]$Name, [string]$Url) {

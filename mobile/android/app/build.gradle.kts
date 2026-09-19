@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "io.github.mcxiaochenn.stereorange"
-    compileSdk = 37
+    compileSdk = (System.getenv("ANDROID_COMPILE_SDK") ?: "37").toInt()
     ndkVersion = "28.2.13676358"
 
     if (System.getenv("STEREORANGE_PUBLIC_RELEASE") == "true") {

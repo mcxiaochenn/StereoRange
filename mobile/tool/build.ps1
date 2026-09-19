@@ -55,7 +55,8 @@ try {
     if($LASTEXITCODE -ne 0){throw 'APK 构建失败'}
     & "$PSScriptRoot\verify-apk.ps1" -Apk "build/app/outputs/flutter-apk/app-$Mode.apk" -AndroidSdk $AndroidSdk
     if($Mode -eq 'release'){
-        & "$AndroidSdk\build-tools\36.0.0\apksigner.bat" verify --print-certs 'build/app/outputs/flutter-apk/app-release.apk'
+        $buildTools = if ($env:ANDROID_BUILD_TOOLS) { $env:ANDROID_BUILD_TOOLS } else { '36.0.0' }
+        & "$AndroidSdk\build-tools\$buildTools\apksigner.bat" verify --print-certs 'build/app/outputs/flutter-apk/app-release.apk'
         if($LASTEXITCODE -ne 0){throw '正式 APK 签名校验失败。'}
     }
     if($PublicRelease){

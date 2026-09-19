@@ -62,71 +62,105 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $sdk = $env:ANDROID_HOME
-          if (-not $sdk) { throw 'ANDROID_HOME 未设置' }
+          if (-not $sdk) { $sdk = $env:ANDROID_SDK_ROOT }
+          if (-not $sdk) { throw 'ANDROID_HOME/ANDROID_SDK_ROOT 未设置' }
           $sdkmanager = @(
             (Join-Path $sdk 'cmdline-tools\latest\bin\sdkmanager.bat'),
             (Join-Path $sdk 'cmdline-tools\16.0\bin\sdkmanager.bat')
-          ) + @(Get-ChildItem (Join-Path $sdk 'cmdline-tools\*\bin\sdkmanager.bat') -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | ForEach-Object { $_.FullName }) |
-            Where-Object { $_ -and (Test-Path $_) } |
-            Select-Object -First 1
+          ) + @(
+            Get-ChildItem (Join-Path $sdk 'cmdline-tools\*\bin\sdkmanager.bat') -ErrorAction SilentlyContinue |
+              Sort-Object FullName -Descending |
+              ForEach-Object { $_.FullName }
+          ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
           if (-not $sdkmanager) { throw "找不到 sdkmanager，SDK=$sdk" }
           Write-Host "Using sdkmanager: $sdkmanager"
 
-          function Invoke-SdkManager([string[]]$SdkArgs) {
-            Write-Host "sdkmanager $($SdkArgs -join ' ')"
-            $psi = New-Object System.Diagnostics.ProcessStartInfo
-            $psi.FileName = $sdkmanager
-            $psi.Arguments = ($SdkArgs | ForEach-Object {
-              if ($_ -match '[\s;]') { '"' + $_ + '"' } else { $_ }
-            }) -join ' '
-            $psi.UseShellExecute = $false
-            $psi.RedirectStandardInput = $true
-            $psi.RedirectStandardOutput = $true
-            $psi.RedirectStandardError = $true
-            $proc = [System.Diagnostics.Process]::Start($psi)
-            $proc.StandardInput.Write(("y`n" * 120))
-            $proc.StandardInput.Close()
-            $out = $proc.StandardOutput.ReadToEnd()
-            $err = $proc.StandardError.ReadToEnd()
-            $proc.WaitForExit()
-            Write-Host $out
-            if ($err) { Write-Host $err }
-            return $proc.ExitCode
+          # sdkmanager 要求 --sdk_root=<path> 等号形式；此处 SDK 即工具所在根，可省略。
+          $yesFile = Join-Path $env:RUNNER_TEMP 'sdk-yes.txt'
+          1..200 | ForEach-Object { 'y' } | Set-Content -Path $yesFile -Encoding ascii
+
+          function Invoke-SdkManager([string]$Command) {
+            Write-Host "sdkmanager $Command"
+            $cmdLine = "`"$sdkmanager`" $Command < `"$yesFile`""
+            cmd.exe /D /S /C $cmdLine
+            return $LASTEXITCODE
           }
 
-          $null = Invoke-SdkManager @('--sdk_root', $sdk, '--licenses')
+          $null = Invoke-SdkManager '--licenses'
 
           function Install-Package([string]$Package) {
             $channels = @('', '--channel=0', '--channel=1', '--channel=2', '--channel=3')
             foreach ($ch in $channels) {
-              $args = @('--sdk_root', $sdk)
-              if ($ch) { $args += $ch }
-              $args += $Package
-              $code = Invoke-SdkManager $args
+              $cmd = ($ch + ' ' + "`"$Package`"").Trim()
+              $code = Invoke-SdkManager $cmd
               if ($code -eq 0) {
-                Write-Host "Installed: $Package $(if($ch){"via $ch"}else{'via default channel'})"
-                return
+                Write-Host "OK: $Package $(if($ch){"($ch)"}else{'(default)'})"
+                return $true
               }
             }
-            Write-Host "##[warning]无法安装 $Package，开始列出可用平台/NDK 以便诊断"
-            $null = Invoke-SdkManager @('--sdk_root', $sdk, '--list')
-            throw "sdkmanager 安装失败：$Package"
+            Write-Host "##[warning]无法安装：$Package"
+            return $false
           }
 
-          Install-Package 'platform-tools'
-          Install-Package "platforms;android-$env:ANDROID_COMPILE_SDK"
-          Install-Package "build-tools;$env:ANDROID_BUILD_TOOLS"
-          Install-Package "ndk;$env:ANDROID_NDK_VERSION"
+          $okTools = Install-Package 'platform-tools'
+          if (-not $okTools) { throw 'platform-tools 安装失败' }
 
-          $platformDir = Join-Path $sdk "platforms\android-$env:ANDROID_COMPILE_SDK"
+          $compileSdk = $env:ANDROID_COMPILE_SDK
+          $platformPkg = "platforms;android-$compileSdk"
+          $okPlatform = Install-Package $platformPkg
+          if (-not $okPlatform) {
+            Write-Host '尝试从 --list 中选择可用的 platforms;android-*'
+            $listText = (& $sdkmanager --list 2>&1 | Out-String)
+            $listText | Select-String -Pattern 'platforms;android-\d+' -AllMatches |
+              ForEach-Object { $_.Matches.Value } |
+              Sort-Object -Unique |
+              ForEach-Object { Write-Host "  found $_" }
+            $versions = [regex]::Matches($listText, 'platforms;android-(\d+)') |
+              ForEach-Object { [int]$_.Groups[1].Value } |
+              Sort-Object -Unique -Descending
+            $fallback = $versions | Where-Object { $_ -le [int]$compileSdk } | Select-Object -First 1
+            if (-not $fallback) { $fallback = $versions | Select-Object -First 1 }
+            if (-not $fallback) { throw "远程无可用 platforms，compileSdk=$compileSdk" }
+            Write-Host "回退 compileSdk: $compileSdk -> $fallback"
+            $compileSdk = "$fallback"
+            if (-not (Install-Package "platforms;android-$compileSdk")) {
+              throw "platforms;android-$compileSdk 安装失败"
+            }
+            "ANDROID_COMPILE_SDK=$compileSdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
+
+          if (-not (Install-Package "build-tools;$env:ANDROID_BUILD_TOOLS")) {
+            throw "build-tools;$env:ANDROID_BUILD_TOOLS 安装失败"
+          }
+          if (-not (Install-Package "ndk;$env:ANDROID_NDK_VERSION")) {
+            # NDK 版本过多时尝试列表中最近的 28.x
+            $listText = (& $sdkmanager --list 2>&1 | Out-String)
+            $ndkVers = [regex]::Matches($listText, 'ndk;(28[\d.]+)') |
+              ForEach-Object { $_.Groups[1].Value } |
+              Sort-Object -Unique -Descending
+            $ndkOk = $false
+            foreach ($ndk in $ndkVers) {
+              Write-Host "尝试 NDK $ndk"
+              if (Install-Package "ndk;$ndk") {
+                "ANDROID_NDK_VERSION=$ndk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+                $env:ANDROID_NDK_VERSION = $ndk
+                $ndkOk = $true
+                break
+              }
+            }
+            if (-not $ndkOk) { throw "ndk;$env:ANDROID_NDK_VERSION 安装失败" }
+          }
+
+          $platformDir = Join-Path $sdk "platforms\android-$compileSdk"
           $ndkDir = Join-Path $sdk "ndk\$env:ANDROID_NDK_VERSION"
-          if (!(Test-Path $platformDir)) { throw "平台目录仍不存在：$platformDir" }
-          if (!(Test-Path $ndkDir)) { throw "NDK 目录仍不存在：$ndkDir" }
-          $buildToolsZipalign = Join-Path $sdk "build-tools\$env:ANDROID_BUILD_TOOLS\zipalign.exe"
-          if (!(Test-Path $buildToolsZipalign)) { throw "缺少 zipalign：$buildToolsZipalign" }
+          if (!(Test-Path $platformDir)) { throw "平台目录不存在：$platformDir" }
+          if (!(Test-Path $ndkDir)) { throw "NDK 目录不存在：$ndkDir" }
+          $zipalign = Join-Path $sdk "build-tools\$env:ANDROID_BUILD_TOOLS\zipalign.exe"
+          if (!(Test-Path $zipalign)) { throw "缺少 zipalign：$zipalign" }
 
           "ANDROID_SDK_ROOT=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "ANDROID_HOME=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "SDK ready: compileSdk=$compileSdk ndk=$env:ANDROID_NDK_VERSION build-tools=$env:ANDROID_BUILD_TOOLS"
 
       - name: Sync version from single source
         id: version
