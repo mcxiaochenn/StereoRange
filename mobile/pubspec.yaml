@@ -1,0 +1,26 @@
+name: stereorange
+description: "StereoRange 双目视觉智能测距 · 平湖技师学院"
+publish_to: 'none'
+version: 1.0.1+101
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_rust_bridge: 2.12.0
+  shared_preferences: 2.5.3
+  collection: 1.19.1
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - licenses/

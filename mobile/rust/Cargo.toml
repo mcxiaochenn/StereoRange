@@ -1,0 +1,25 @@
+[package]
+name = "stereorange_native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+flutter_rust_bridge = "=2.12.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "=0.21.1"
+opencv = { version = "=0.95.1", default-features = false, features = ["clang-runtime", "calib3d", "imgproc", "imgcodecs"] }
+ort = { version = "=2.0.0-rc.10", default-features = false, features = ["std", "load-dynamic", "ndarray"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
