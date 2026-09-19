@@ -91,20 +91,23 @@ cargo +1.98.0 test --locked --manifest-path rust/Cargo.toml
 
 ## 版本管理（单源）
 
-- **唯一主版本位置**：仓库根目录 `VERSION`，只维护语义版本 `X.Y.Z`（例如 `1.0.1`）。
-- **产物版本格式**：`vX.Y.Z+<git提交次数>`，例如 `VERSION=1.0.2` 且 `git rev-list --count HEAD=150` → `v1.0.2+150`。
-- `mobile/pubspec.yaml` 的 `version: X.Y.Z+N` **由构建同步生成**，不要手工当主版本改；Flutter 会把 `+N` 用作 `versionCode`，`X.Y.Z` 用作 `versionName`。
-- 同步命令：`pwsh -File mobile\tool\sync-version.ps1`（可选 `-OverrideTag vX.Y.Z+N`）。
-- 本地 `build.ps1` 构建前会自动同步；CI 工作流 `build-apk` 同样先同步再编译。
-- **tag 构建**：正则校验 `^v(\d+\.\d+\.\d+)(?:\+(\d+))?$`；若 tag 语义版本与 `VERSION` 不一致，**以 tag 为准替换本次构建版本**（不改写远程 main 的历史提交）。
-- 提升正式语义版本时只改 `VERSION` 并提交；commit 次数由 Git 自动累计，无需手改。
-- 注意：`versionCode` 必须单调递增，否则真机无法覆盖安装。若历史包的 `versionCode` 高于当前提交数，先提高 `VERSION` 并确认卸载旧包，或等提交数追上。
+- **唯一主版本位置**：仓库根目录 `VERSION`，只维护语义版本 `X.Y.Z`（例如 `1.0.2`）。
+- **Git tag 颗粒度**：**只打 `vX.Y.Z`**（例：`v1.0.2`）。tag 上**不要**写提交次数。
+- **提交次数**：由 `mobile/tool/sync-version.ps1` / CI **自动**读取 `git rev-list --count HEAD`，拼成产物版本 `X.Y.Z+N`。
+  - 例：`VERSION=1.0.2`，打 tag `v1.0.2` 时提交数为 25 → 构建 `versionName=1.0.2`、`versionCode=25`，APK 名 `StereoRange-v1.0.2+25-android-arm64.apk`。
+- `mobile/pubspec.yaml` 的 `version: X.Y.Z+N` **由构建同步生成**，不要当主版本手改；Flutter 将 `+N` 用作 `versionCode`，`X.Y.Z` 用作 `versionName`。
+- 同步命令：`pwsh -File mobile\tool\sync-version.ps1`（可选 `-OverrideTag v1.0.2`）。
+- 本地 `build.ps1` 与 CI `build-apk` 构建前都会自动同步。
+- **tag 构建**：校验 tag 形如 `^v(\d+\.\d+\.\d+)$`；若与 `VERSION` 不一致，**以 tag 为准替换本次构建版本**（不改写远程 main 历史）。
+- 若错误地打了 `vX.Y.Z+N` 这类 tag，CI 会直接失败并提示改用 `vX.Y.Z`。
+- 提升正式语义版本时只改 `VERSION` 并提交；然后 `git tag vX.Y.Z && git push origin vX.Y.Z`。
+- **注意**：`versionCode` 必须单调递增，否则真机无法覆盖安装。
 
 ## CI：`build-apk`
 
 - 文件：`.github/workflows/build-apk.yml`，一 CI 两用。
-- **push 到 main**：自动构建 APK，上传到 Actions 产物。
-- **发布 tag（`vX.Y.Z` 或 `vX.Y.Z+N`）**：校验/替换版本后构建，并将 APK + `SHA256SUMS.txt` 挂到该 tag 的 GitHub Release。
+- **push 到 main**：自动同步版本（`X.Y.Z+提交数`）并构建 APK，上传 Actions 产物。
+- **发布 tag（仅 `vX.Y.Z`）**：校验/替换语义版本后构建；产物文件名带自动 `+N`；APK + `SHA256SUMS.txt` 挂到 **tag=`vX.Y.Z`** 的 GitHub Release。
 - tag 正式包需要 Secrets：`STEREORANGE_KEYSTORE_BASE64`、`STEREORANGE_STORE_PASSWORD`、`STEREORANGE_KEY_ALIAS`、`STEREORANGE_KEY_PASSWORD`。
 - 未配置签名时：普通 push 会构建 debug APK 供下载；tag 构建直接失败并提示配置密钥。
 
@@ -114,9 +117,10 @@ cargo +1.98.0 test --locked --manifest-path rust/Cargo.toml
 - 私有子模块更新顺序：先在 `private-data/` commit+push，再在主仓库更新子模块指针。
 - 公开 APK **只内置官方 YOLOX 模型**，不含个人标定；真实测距需导入自己的标定 JSON。
 - Release 产物命名：
-  - `StereoRange-vX.Y.Z+<提交次数>-android-arm64.apk`
+  - tag / Release 名：`vX.Y.Z`（人工）
+  - APK 文件名：`StereoRange-vX.Y.Z+<自动提交数>-android-arm64.apk`
   - `SHA256SUMS.txt`
-  - `StereoRange-vX.Y.Z+<提交次数>-3d-print.zip`（如包含）
+  - `StereoRange-vX.Y.Z+<自动提交数>-3d-print.zip`（如包含）
 - 发布说明写在 `docs/releases/vX.Y.Z.md`；下载链接与版本叙述以 `VERSION` 与 CI 产物为准。
 - 签名密钥在仓库外 `D:\Android\Signing\StereoRange\`，**永不入库**。
 

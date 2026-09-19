@@ -22,7 +22,7 @@ jobs:
     runs-on: windows-latest
     outputs:
       version_full: ${{ steps.version.outputs.full }}
-      version_tag: ${{ steps.version.outputs.tag }}
+      version_release_tag: ${{ steps.version.outputs.release_tag }}
       version_replaced: ${{ steps.version.outputs.replaced }}
       artifact_name: ${{ steps.pack.outputs.artifact_name }}
     steps:
@@ -224,10 +224,13 @@ jobs:
             $tag = '${{ github.ref_name }}'
             Write-Host "触发方式：tag $tag"
           } else {
-            Write-Host '触发方式：push main（语义版本取 VERSION，versionCode=git 提交次数）'
+            Write-Host '触发方式：push main（VERSION 只写 X.Y.Z，versionCode=脚本自动附加的 git 提交次数）'
           }
-          if ($tag -and $tag -notmatch '^v(\d+\.\d+\.\d+)(?:\+(\d+))?$') {
-            throw "tag 不符合版本规范 vX.Y.Z[+build]：$tag"
+          if ($tag -and $tag -match '\+') {
+            throw "tag 只允许 vX.Y.Z，提交次数由脚本自动附加，不要写成 $tag"
+          }
+          if ($tag -and $tag -notmatch '^v(\d+\.\d+\.\d+)$') {
+            throw "tag 不符合 vX.Y.Z：$tag"
           }
           $syncArgs = @{}
           if ($tag) { $syncArgs.OverrideTag = $tag }
@@ -240,18 +243,21 @@ jobs:
           if (-not $full) { throw '无法从 pubspec 读取版本' }
           if ($full -notmatch '^\d+\.\d+\.\d+\+\d+$') { throw "pubspec 版本格式异常：$full" }
           Write-Host "pubspec version = $full"
+          $base = ($full -split '\+')[0]
+          $releaseTag = "v$base"
           $replaced = ''
           if ($tag) {
-            $tagBase = ($tag -replace '^v','' -replace '\+.*$','')
-            if ($sourceBase -ne $tagBase) {
-              $replaced = "$sourceBase -> $tagBase"
-              Write-Host "::notice title=版本已替换::源码 VERSION($sourceBase) 与 tag($tagBase) 不一致，构建时已替换为 tag 版本"
+            if ($sourceBase -ne $base) {
+              $replaced = "$sourceBase -> $base"
+              Write-Host "::notice title=版本已替换::源码 VERSION($sourceBase) 与 tag($releaseTag) 不一致，构建时已替换为 tag 版本"
             } else {
-              Write-Host '源码版本与 tag 一致，无需替换'
+              Write-Host "源码版本与 tag 一致：$releaseTag"
             }
           }
+          Write-Host "构建标签：v$full | GitHub Release tag：$releaseTag"
           "full=$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "tag=v$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "release_tag=$releaseTag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "build_label=v$full" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "replaced=$replaced" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "source_base=$sourceBase" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
@@ -360,13 +366,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = '${{ github.ref_name }}'
+          $full = '${{ steps.version.outputs.full }}'.Trim()
           $apk = '${{ steps.pack.outputs.apk_path }}'
           $sums = 'mobile/artifacts/ci/SHA256SUMS.txt'
+          $notes = @"
+    StereoRange $tag
+
+    - 构建版本：``$full``（versionCode 为 git 提交次数，脚本自动附加）
+    - APK：``$([IO.Path]::GetFileName($apk))``
+    - 签名：正式长期证书；公开包仅内置官方识别模型
+    "@
           gh release view $tag --repo ${{ github.repository }} 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo ${{ github.repository }} --title "StereoRange $tag" --notes "CI 构建产物：$tag" --verify-tag
+            gh release create $tag --repo ${{ github.repository }} --title "StereoRange $tag" --notes $notes --verify-tag
             if ($LASTEXITCODE -ne 0) { throw "创建 Release 失败：$tag" }
           }
           gh release upload $tag --repo ${{ github.repository }} --clobber $apk $sums
           if ($LASTEXITCODE -ne 0) { throw '上传 Release 附件失败' }
-          Write-Host "已将 APK 挂到 Release $tag"
+          Write-Host "已将 APK 挂到 Release $tag（产物 $full）"
