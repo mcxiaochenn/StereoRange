@@ -570,7 +570,7 @@ class SettingsPage extends StatelessWidget {
         Text('StereoRange', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 10),
         const Text(
-          '平湖技师学院\n陆逸尘 · 辰渊尘 · ChenDusk\nGitHub @mcxiaochenn',
+          '平湖技师学院\n陆逸尘（辰渊尘 ChenDusk · @mcxiaochenn）\n周璟雯 · 胡乐毅\n指导教师 张梁',
           style: TextStyle(height: 1.8),
         ),
         const SizedBox(height: 12),

@@ -69,7 +69,10 @@ def test_pause_mode_and_missing_resources_are_visible(tmp_path: Path) -> None:
     assert "占位参数" in window.calibration_badge.text()
     assert window.retry_button.text() == "重试连接"
     label_texts = [label.text() for label in window.findChildren(QLabel)]
-    assert any("陆逸尘" in text and "ChenDusk" in text for text in label_texts)
+    assert any(
+        "陆逸尘" in text and "ChenDusk" in text and "周璟雯" in text and "胡乐毅" in text
+        for text in label_texts
+    )
     window.close()
 
 

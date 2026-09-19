@@ -1,4 +1,4 @@
-//! 平湖技师学院 · 陆逸尘 / 辰渊尘 / ChenDusk · GitHub @mcxiaochenn
+//! 平湖技师学院 · 陆逸尘（辰渊尘 ChenDusk · @mcxiaochenn）· 周璟雯 · 胡乐毅 · 指导教师 张梁
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

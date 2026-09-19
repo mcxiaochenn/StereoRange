@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "基于双目视觉视差原理的任意表面测距系统"
 authors = [
     { name = "陆逸尘" },
-    { name = "辰渊尘" },
+    { name = "周璟雯" },
+    { name = "胡乐毅" },
 ]
 requires-python = ">=3.10,<3.12"
 dependencies = [

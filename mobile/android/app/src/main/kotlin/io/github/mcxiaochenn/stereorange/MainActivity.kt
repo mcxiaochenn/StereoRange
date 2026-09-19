@@ -212,7 +212,7 @@ class MainActivity : FlutterActivity() {
                 c.drawText("%.2f m".format(p.getDouble("distance_m")),x.coerceAtMost(1140f),(y+35).coerceAtMost(950f),paint)
             }
         }
-        paint.color=Color.WHITE;c.drawText("StereoRange · ${if(frame.getBoolean("demo")) "模拟演示" else "双目测距"} · 平湖技师学院 / 陆逸尘 / ChenDusk",20f,1010f,paint)
+        paint.color=Color.WHITE;c.drawText("StereoRange · ${if(frame.getBoolean("demo")) "模拟演示" else "双目测距"} · 平湖技师学院 / 陆逸尘（ChenDusk）/ 周璟雯 / 胡乐毅 / 指导 张梁",20f,1010f,paint)
         return image
     }
     @Deprecated("Android 文件选择回调")

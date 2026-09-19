@@ -32,6 +32,10 @@ def test_help_contains_project_credit(capsys) -> None:
     assert exc_info.value.code == 0
     output = capsys.readouterr().out
     assert "平湖技师学院" in output
+    assert "陆逸尘" in output
+    assert "周璟雯" in output
+    assert "胡乐毅" in output
+    assert "张梁" in output
     assert "mcxiaochenn" in output
 
 
