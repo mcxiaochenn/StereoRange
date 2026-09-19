@@ -229,12 +229,16 @@ jobs:
           if ($tag -and $tag -notmatch '^v(\d+\.\d+\.\d+)(?:\+(\d+))?$') {
             throw "tag 不符合版本规范 vX.Y.Z[+build]：$tag"
           }
-          $args = @{}
-          if ($tag) { $args.OverrideTag = $tag }
-          & .\mobile\tool\sync-version.ps1 @args
-          if ($LASTEXITCODE -ne 0) { throw '版本同步失败' }
+          $syncArgs = @{}
+          if ($tag) { $syncArgs.OverrideTag = $tag }
+          try {
+            & .\mobile\tool\sync-version.ps1 @syncArgs
+          } catch {
+            throw "版本同步失败：$($_.Exception.Message)"
+          }
           $full = ((Get-Content .\mobile\pubspec.yaml | Where-Object { $_ -match '^version:\s*(.+)$' } | Select-Object -First 1) -replace '^version:\s*','').Trim()
           if (-not $full) { throw '无法从 pubspec 读取版本' }
+          if ($full -notmatch '^\d+\.\d+\.\d+\+\d+$') { throw "pubspec 版本格式异常：$full" }
           Write-Host "pubspec version = $full"
           $replaced = ''
           if ($tag) {

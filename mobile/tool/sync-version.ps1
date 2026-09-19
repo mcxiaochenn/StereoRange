@@ -58,4 +58,5 @@ if ($env:GITHUB_OUTPUT) {
     if ($replaced) { "replaced=$replaced" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8 }
 }
 if ($WriteOnly) { return }
-return @{ Base = $base; Code = $count; Full = $full }
+Write-Output @{ Base = $base; Code = $count; Full = $full } | Format-List | Out-Host
+exit 0
