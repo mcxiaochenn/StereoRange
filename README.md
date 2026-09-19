@@ -1,8 +1,18 @@
 # StereoRange
 
-基于双目视觉视差原理的任意表面测距系统，计划使用 Python 实现。
+基于双目视觉视差原理的任意表面测距系统，桌面端使用 Python，Android 端使用 Flutter + Rust。
 
 > 平湖技师学院 · 陆逸尘 · 辰渊尘 · GitHub [@mcxiaochenn](https://github.com/mcxiaochenn) · ChenDusk
+
+## Android 版
+
+新增 Flutter Material 3 中文界面与 Rust 测距核心，支持 Android 13 及以上的 ARM64 手机、USB OTG 双目相机和离线演示。桌面 Python 版保持独立。
+
+构建、安装、标定导入及实机验收说明见 [Android 开发与使用说明](mobile/README.md)。个人模型与标定只从私有子模块准备，包含个人资源的 APK 不公开发布。
+
+正式下载：[StereoRange v1.0.1](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.1)（`arm64-v8a`，公开包仅内置官方识别模型，真实测距前需导入自己的标定文件）。应用设置页可一键打开 GitHub 仓库。3D 打印模型位于 [3D-Print](3D-Print/)。
+
+开发规范见 [AGENTS.md](AGENTS.md)，开发日记与索引见 [docs/diary](docs/diary/INDEX.md)。
 
 ## 项目信息
 
@@ -194,7 +204,7 @@ Windows 下也可直接双击 `启动测距.bat`。界面会自动连接相机�
 - 下方三个缩略图可点击切换到主视图；右侧可暂停、重连、截图、全屏、调整可靠距离范围和识别阈值；
 - 设置会自动保存，“恢复默认设置”可还原 `0.20～3.00 m`、置信度 `0.40` 和全场景模式。
 
-当前设备标定的双目标定 RMS 约为 `4.09 px`，界面会显示红色告警并允许继续演示。此时距离只能用于展示处理流程，不能描述为精确测量；正式比赛前应重新标定并争取 RMS 不高于 `1 px`。
+当前设备最新双目标定 RMS 约为 `0.378 px`（320×240）。若界面显示黄色/红色告警，说明标定文件与当前设备或分辨率不匹配，距离只能用于展示处理流程，不能描述为精确测量；正式比赛前应重新标定并维持 RMS 不高于 `1 px`。
 
 若使用两个独立摄像头，则显式启用双设备模式：
 
@@ -271,10 +281,12 @@ python main.py --left left.png --right right.png --focal-px 700 --baseline-m 0.1
 - 当前版本未实现点云生成、录像、硬件同步和测距精度优化；
 - 当前目标是跑通数据流和交互，不代表已经具备实际工程测距精度。
 
-## Android 可行性
+## Android 版说明
 
-项目可以在第二阶段开发 Android App，但不建议直接封装 Python。推荐继续使用当前横向拼接 UVC 双目相机，通过 USB OTG 接入手机，使用 Kotlin、Jetpack Compose、OpenCV Android 和 ONNX Runtime Mobile 重写采集与界面层，并复用本项目的模型、类别标签、距离算法和标定参数。手机自带多摄像头是否开放、能否并发及同步精度取决于具体厂商，不能作为比赛默认路线。
+Android 端已实现：Flutter Material 3 界面 + Rust 测距核心 + Kotlin UVC/USB 接入，不封装 Python。继续使用横向拼接 UVC 双目相机，通过 USB OTG 连接手机；手机自带多摄并发与同步因厂商而异，不作为默认路线。构建与验收细节见 [mobile/README.md](mobile/README.md)，开发日记见 [docs/diary](docs/diary/INDEX.md)。
 
 ## 项目状态
 
-比赛演示级桌面界面、离线识别和标定流程已经接通。当前仍需重新完成高质量标定，并用卷尺在 `0.2、0.5、1、2、3 m` 做实物误差记录与 30 分钟稳定性验收。
+桌面 Python 端与 Android 端均已具备演示级能力：标定、识别、三点测距、一体化界面已接通；最新双目标定 RMS 约 `0.378 px`（320×240）。公开 Release 为 [v1.0.1](https://github.com/mcxiaochenn/StereoRange/releases/tag/v1.0.1)。
+
+仍待验收：卷尺在 `0.2、0.5、1、2、3 m` 的实物误差记录、连续 30 分钟稳定性与温升、Android 13 实机与 OTG 恢复、Python/Android 同图精度对照。低标定 RMS 不等于真实物距无误差。
