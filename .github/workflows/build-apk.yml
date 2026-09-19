@@ -369,13 +369,8 @@ jobs:
           $full = '${{ steps.version.outputs.full }}'.Trim()
           $apk = '${{ steps.pack.outputs.apk_path }}'
           $sums = 'mobile/artifacts/ci/SHA256SUMS.txt'
-          $notes = @"
-    StereoRange $tag
-
-    - 构建版本：``$full``（versionCode 为 git 提交次数，脚本自动附加）
-    - APK：``$([IO.Path]::GetFileName($apk))``
-    - 签名：正式长期证书；公开包仅内置官方识别模型
-    "@
+          $apkName = [IO.Path]::GetFileName($apk)
+          $notes = "StereoRange $tag`n`n- 构建版本：$full（versionCode 为 git 提交次数，脚本自动附加）`n- APK：$apkName`n- 签名：正式长期证书；公开包仅内置官方识别模型"
           gh release view $tag --repo ${{ github.repository }} 2>$null
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --repo ${{ github.repository }} --title "StereoRange $tag" --notes $notes --verify-tag
