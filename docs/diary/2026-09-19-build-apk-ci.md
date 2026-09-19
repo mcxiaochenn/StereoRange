@@ -40,7 +40,9 @@
 2. 或先提高 `VERSION` 语义版本，并等提交数超过历史 `versionCode`；
 3. 或在足够多次提交后再打正式 tag。
 
-## 遗留
+## 后续状态
 
-- 首次跑通 CI 需在 GitHub 配置签名 Secrets（tag 正式包）。
-- 历史文档/Release 中的 `v1.0.1` 文件名不含 `+N`，属旧命名；新约定为 `vX.Y.Z+N`。
+- 签名 Secrets 已配置，tag 正式包由 CI 自动签名发布。
+- 发版约定已对齐为：**tag=`vX.Y.Z`**，产物文件名带自动 `+提交次数`。
+- 历史 `v1.0.1` Release 文件名不含 `+N`，属旧命名；新包按 `StereoRange-vX.Y.Z+N-android-arm64.apk`。
+

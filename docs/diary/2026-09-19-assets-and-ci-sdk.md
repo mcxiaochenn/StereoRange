@@ -29,10 +29,11 @@ README、AGENTS、发布说明中的路径已同步更新。
 ## 版本
 
 - 语义版本源 `VERSION=1.0.2`
-- 发布 tag：`v1.0.2+<提交次数>`（本轮将随修复提交后的次数生成）
-- 注意：此前失败 tag `v1.0.2+15` 仍留在远程，可忽略；正式以成功 CI 的 tag 为准
+- 后续约定：**tag 只打 `vX.Y.Z`**，`+提交次数` 由脚本自动附加（见当日后续日记）
+- 失败的 `v1.0.2+N` tag 已清理
 
-## 遗留
+## 后续处理
 
-- `platforms;android-37` 若所有 channel 均不可用，需把 `mobile/android/app/build.gradle.kts` 的 `compileSdk` 改为远程可用版本，或改用本机已有 SDK 的 CI runner
-- 失败 tag `v1.0.2+15` 需所有者手动删除：`git push origin :refs/tags/v1.0.2+15`
+- `platforms;android-37` 问题已定位为远程包名 `platforms;android-37.0`，CI 安装逻辑已兼容
+- 失败 tag 已删除；正式 Release 见 tag `v1.0.2`
+

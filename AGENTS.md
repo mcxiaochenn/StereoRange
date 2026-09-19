@@ -76,7 +76,7 @@ cargo +1.98.0 test --locked --manifest-path rust/Cargo.toml
 - 棋盘：`9×6` 内角点、`25 mm` 方格；打印后需实测方格边长。
 - 重新标定使用**新目录**，不要把不同分辨率图片混进旧目录。
 - 运行时必须先 `remap` 立体校正，再算视差；只改占位焦距/基线不够。
-- 当前正式标定双目 RMS 约 **0.378 px**（`private-data/calibration.npz`）。RMS 低不等于实物距离无误差，仍需卷尺验收。
+- 当前正式标定双目 RMS 约 **0.378 px**（`private-data/calibration.npz`）。已知物距与连续运行压测已完成；换设备/分辨率/镜头位置后仍须重标定并按现场复核，标定 RMS 不能单独代替物距结论。
 
 ## 算法与 UI 口径（两端保持一致）
 
