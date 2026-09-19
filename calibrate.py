@@ -49,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     solve.add_argument(
         "--output", type=Path, default=Path("private-data/calibration.npz")
     )
+    export = subparsers.add_parser("export-mobile", help="导出安卓端使用的 JSON 标定文件")
+    export.add_argument("--input", type=Path, default=Path("private-data/calibration.npz"))
+    export.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -62,6 +65,12 @@ def _add_board_arguments(parser: argparse.ArgumentParser, millimetres: bool) -> 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.command == "export-mobile":
+            from stereorange.mobile_export import export_mobile_calibration
+
+            export_mobile_calibration(args.input, args.output)
+            print(f"安卓标定文件已保存：{args.output.resolve()}")
+            return 0
         board_size = (args.cols, args.rows)
         if args.command == "pattern":
             pdf_path, svg_path = generate_checkerboard_files(

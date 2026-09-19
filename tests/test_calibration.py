@@ -52,6 +52,45 @@ def make_calibration() -> StereoCalibration:
     )
 
 
+def test_mobile_export_preserves_matrices_and_units(tmp_path: Path) -> None:
+    import json
+    from stereorange.mobile_export import export_mobile_calibration
+
+    source, target = tmp_path / "calibration.npz", tmp_path / "mobile.json"
+    original = make_calibration()
+    save_calibration(source, original)
+    export_mobile_calibration(source, target)
+    result = json.loads(target.read_text(encoding="utf-8"))
+    assert result["schema_version"] == 1
+    assert result["length_unit"] == "m"
+    assert result["image_size"] == [320, 240]
+    assert np.allclose(result["projection_right"], original.projection_right)
+    assert np.allclose(result["translation"], original.translation)
+    assert result["rms_stereo"] == original.rms_stereo
+
+
+def test_mobile_export_rejects_nonfinite_without_replacing_file(tmp_path: Path) -> None:
+    from stereorange.mobile_export import export_mobile_calibration
+
+    original = make_calibration()
+    original.left_camera_matrix[0, 0] = np.nan
+    source, target = tmp_path / "bad.npz", tmp_path / "previous.json"
+    save_calibration(source, original)
+    target.write_text("previous", encoding="utf-8")
+    with pytest.raises(ValueError):
+        export_mobile_calibration(source, target)
+    assert target.read_text(encoding="utf-8") == "previous"
+
+
+def test_mobile_export_cli(tmp_path: Path) -> None:
+    import calibrate
+
+    source, target = tmp_path / "input.npz", tmp_path / "output.json"
+    save_calibration(source, make_calibration())
+    assert calibrate.main(["export-mobile", "--input", str(source), "--output", str(target)]) == 0
+    assert target.is_file()
+
+
 def test_create_object_points_uses_measured_square_size() -> None:
     points = create_object_points((9, 6), square_size_m=0.025)
 
